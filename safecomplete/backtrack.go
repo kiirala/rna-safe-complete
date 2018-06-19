@@ -16,12 +16,12 @@ func BacktrackAll(seq *base.Sequence, v, w [][]int) ([][]int, []string) {
 }
 
 func recursiveBacktrack(seq *base.Sequence, v, w [][]int, i, j int, foldings [][]int, makings []string, foldid int, onlyPairing bool) ([][]int, []string) {
-	cachedFolding := make([]int, len(foldings[foldid]))
-	copy(cachedFolding, foldings[foldid])
-	cachedMaking := makings[foldid]
 	if i >= j {
 		return foldings, makings
 	}
+	cachedFolding := make([]int, len(foldings[foldid]))
+	copy(cachedFolding, foldings[foldid])
+	cachedMaking := makings[foldid]
 	numFound := 0
 	if seq.CanPair(i, j) && v[i][j] == v[i+1][j-1]+1 {
 		foldings[foldid][i] = j
@@ -31,6 +31,9 @@ func recursiveBacktrack(seq *base.Sequence, v, w [][]int, i, j int, foldings [][
 		foldings, makings = recursiveBacktrack(seq, v, w, i+1, j-1, foldings, makings, foldid, false)
 	}
 	if onlyPairing {
+		if numFound != 1 {
+			makings[foldid] += fmt.Sprintf(" !!!(%d,%d)!!!", i, j)
+		}
 		return foldings, makings
 	}
 	for k := i; k < j; k++ {
@@ -45,7 +48,7 @@ func recursiveBacktrack(seq *base.Sequence, v, w [][]int, i, j int, foldings [][
 				newFoldID = len(foldings) - 1
 			}
 			makings[newFoldID] += fmt.Sprintf(" j(%d,%d)(%d,%d)", i, k, k+1, j)
-			foldings, makings = recursiveBacktrack(seq, v, w, i, k, foldings, makings, newFoldID, true)
+			foldings, makings = recursiveBacktrack(seq, v, w, i, k, foldings, makings, newFoldID, false)
 			foldings, makings = recursiveBacktrack(seq, v, w, k+1, j, foldings, makings, newFoldID, true)
 		}
 	}
