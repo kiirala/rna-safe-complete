@@ -57,6 +57,8 @@ func main() {
 	fmt.Print("Matrix v:\n", format.Matrix(v), "\n")
 	fmt.Print("Matrix w:\n", format.Matrix(w), "\n")
 	fmt.Printf("Found %d solutions in total\n", scFoldings.CountSolutions())
+	scFoldings.CollapseTree()
+	fmt.Printf("Found %d solutions after CollapseTree\n", scFoldings.CountSolutions())
 	fmt.Println(format.SCFolding(scFoldings))
 	/*for i, f := range allFoldings {
 		fmt.Print("\n")

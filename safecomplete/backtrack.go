@@ -18,7 +18,6 @@ type Folding struct {
 func BacktrackAll(seq *base.Sequence, v, w [][]int) *Folding {
 	folding := &Folding{}
 	recursiveBacktrack(seq, v, w, 0, len(v)-1, folding)
-	collapseTree(folding)
 	return folding
 }
 
@@ -85,13 +84,13 @@ func liftBranches(p *Folding, c *Folding) {
 	p.JoinSuffix = c.JoinSuffix
 }
 
-func collapseTree(f *Folding) {
+func (f *Folding) CollapseTree() {
 	for _, b := range f.Branches {
-		collapseTree(b)
+		b.CollapseTree()
 	}
 	if f.JoinPrefix != nil {
-		collapseTree(f.JoinPrefix)
-		collapseTree(f.JoinSuffix)
+		f.JoinPrefix.CollapseTree()
+		f.JoinSuffix.CollapseTree()
 
 		if branchless(f.JoinPrefix) || branchless(f.JoinSuffix) {
 			pref := f.JoinPrefix
