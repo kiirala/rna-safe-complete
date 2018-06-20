@@ -228,3 +228,47 @@ func (f *Folding) LiftCommon() {
 		}
 	}
 }
+
+func joinArrays(a, b []int) []int {
+	ret := make([]int, len(a))
+	copy(ret, a)
+	for i, x := range b {
+		if x >= 0 {
+			ret[i] = x
+		}
+	}
+	return ret
+}
+
+func (f *Folding) GeneratePairArrays(seq *base.Sequence) [][]int {
+	var pp [][]int
+	for _, b := range f.Branches {
+		pp = append(pp, b.GeneratePairArrays(seq)...)
+	}
+	if f.JoinPrefix != nil {
+		pref := f.JoinPrefix.GeneratePairArrays(seq)
+		suff := f.JoinSuffix.GeneratePairArrays(seq)
+		for _, pa := range pref {
+			for _, sa := range suff {
+				pp = append(pp, joinArrays(pa, sa))
+			}
+		}
+	}
+	if len(pp) == 0 {
+		pp = make([][]int, 1)
+		pp[0] = make([]int, len(seq.Bases))
+		for i := 0; i < len(pp[0]); i++ {
+			pp[0][i] = -9
+		}
+	}
+	for _, p := range pp {
+		for _, pair := range f.Pairs {
+			p[pair.I] = pair.J
+			p[pair.J] = pair.I
+		}
+		for _, free := range f.Free {
+			p[free] = -1
+		}
+	}
+	return pp
+}
