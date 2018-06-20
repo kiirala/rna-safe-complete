@@ -49,14 +49,15 @@ func main() {
 		}
 	*/
 	w := safecomplete.FillArray(seq, v)
-	allFoldings, allMakings := safecomplete.BacktrackAll(seq, v, w)
-	fmt.Printf("Safe and complete version found %d foldings\n", len(allFoldings))
-	if sanity := allFoldingsSanity(seq, allFoldings); sanity != "" {
-		fmt.Print("Sanity check failed!\n", sanity, "\n")
-	}
+	scFoldings := safecomplete.BacktrackAll(seq, v, w)
+	//fmt.Printf("Safe and complete version found %d foldings\n", len(allFoldings))
+	//if sanity := allFoldingsSanity(seq, allFoldings); sanity != "" {
+	//	fmt.Print("Sanity check failed!\n", sanity, "\n")
+	//}
 	fmt.Print("Matrix v:\n", format.Matrix(v), "\n")
 	fmt.Print("Matrix w:\n", format.Matrix(w), "\n")
-	for i, f := range allFoldings {
+	fmt.Println(format.SCFolding(scFoldings))
+	/*for i, f := range allFoldings {
 		fmt.Print("\n")
 		fmt.Print(f, "\n")
 		if sanity := singleFoldingSanity(seq, f, flen); len(sanity) > 0 {
@@ -64,13 +65,13 @@ func main() {
 		}
 		fmt.Printf("%s\n", allMakings[i])
 		fmt.Print(format.Folding(seq, f))
-	}
+	}*/
 }
 
 func singleFoldingSanity(seq *base.Sequence, f []int, numPairs int) string {
 	var errs []string
 	for i, j := range f {
-		if j == -1 {
+		if j < 0 {
 			continue
 		}
 		if i == j {

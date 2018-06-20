@@ -4,6 +4,7 @@ import "fmt"
 import "strings"
 
 import "keltainen.duckdns.org/rnafolding/base"
+import "keltainen.duckdns.org/rnafolding/safecomplete"
 
 func Matrix(m [][]int) string {
 	strs := make([]string, len(m))
@@ -113,6 +114,45 @@ func (c *canvas) Draw() string {
 	var out string
 	for y := 0; y < len(lines); y++ {
 		out += string(lines[y]) + "\n"
+	}
+	return out
+}
+
+func SCFolding(f *safecomplete.Folding) string {
+	return recursiveSCFolding(f, 0)
+}
+
+func recursiveSCFolding(f *safecomplete.Folding, depth int) string {
+	out := ""
+	indent := ""
+	for i := 0; i < depth; i++ {
+		indent += "    "
+	}
+	if len(f.Pairs) > 0 {
+		out += indent + "Pairs: "
+		var pairs []string
+		for _, p := range f.Pairs {
+			pairs = append(pairs, fmt.Sprintf("(%d,%d)", p.I, p.J))
+		}
+		out += strings.Join(pairs, ", ") + "\n"
+	}
+	if len(f.Free) > 0 {
+		out += indent + "Free: "
+		var free []string
+		for _, i := range f.Free {
+			free = append(free, fmt.Sprintf("%d", i))
+		}
+		out += strings.Join(free, ", ") + "\n"
+	}
+	if f.JoinPrefix != nil {
+		out += indent + "Join prefix:\n"
+		out += recursiveSCFolding(f.JoinPrefix, depth+1)
+		out += indent + "Join suffix:\n"
+		out += recursiveSCFolding(f.JoinSuffix, depth+1)
+	}
+	for i, b := range f.Branches {
+		out += fmt.Sprintf("%sAlternative %d of %d:\n", indent, i+1, len(f.Branches))
+		out += recursiveSCFolding(b, depth+1)
 	}
 	return out
 }
