@@ -60,6 +60,7 @@ func main() {
 	fmt.Printf("Found %d solutions after LiftCommon\n", scFoldings.CountSolutions())
 
 	scPairArrays := scFoldings.GeneratePairArrays(seq)
+	fmt.Printf("Folding tree -> folding arrays conversion produced %d foldings\n", len(scPairArrays))
 	if sanity := allFoldingsSanity(seq, scPairArrays); sanity != "" {
 		fmt.Print("Sanity check failed!\n", sanity, "\n")
 	}
