@@ -79,6 +79,12 @@ func branchless(f *Folding) bool {
 	return f.JoinPrefix == nil && len(f.Branches) == 0
 }
 
+func liftBranches(p *Folding, c *Folding) {
+	p.Branches = c.Branches
+	p.JoinPrefix = c.JoinPrefix
+	p.JoinSuffix = c.JoinSuffix
+}
+
 func collapseTree(f *Folding) {
 	for _, b := range f.Branches {
 		collapseTree(b)
@@ -87,12 +93,19 @@ func collapseTree(f *Folding) {
 		collapseTree(f.JoinPrefix)
 		collapseTree(f.JoinSuffix)
 
-		if branchless(f.JoinPrefix) && branchless(f.JoinSuffix) {
-			f.Pairs = append(f.Pairs, f.JoinPrefix.Pairs...)
-			f.Free = append(f.Free, f.JoinPrefix.Free...)
+		if branchless(f.JoinPrefix) || branchless(f.JoinSuffix) {
+			pref := f.JoinPrefix
+			suff := f.JoinSuffix
+			if !branchless(pref) {
+				liftBranches(f, pref)
+			} else if !branchless(suff) {
+				liftBranches(f, suff)
+			}
+			f.Pairs = append(f.Pairs, pref.Pairs...)
+			f.Free = append(f.Free, pref.Free...)
 			f.JoinPrefix = nil
-			f.Pairs = append(f.Pairs, f.JoinSuffix.Pairs...)
-			f.Free = append(f.Free, f.JoinSuffix.Free...)
+			f.Pairs = append(f.Pairs, suff.Pairs...)
+			f.Free = append(f.Free, suff.Free...)
 			f.JoinSuffix = nil
 		}
 	}
