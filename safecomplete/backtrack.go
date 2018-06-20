@@ -110,3 +110,17 @@ func collapseTree(f *Folding) {
 		}
 	}
 }
+
+func (f *Folding) CountSolutions() int {
+	if len(f.Branches) > 0 {
+		sum := 0
+		for _, b := range f.Branches {
+			sum += b.CountSolutions()
+		}
+		return sum
+	}
+	if f.JoinPrefix != nil {
+		return f.JoinPrefix.CountSolutions() * f.JoinSuffix.CountSolutions()
+	}
+	return 1
+}
