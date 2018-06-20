@@ -123,3 +123,108 @@ func (f *Folding) CountSolutions() int {
 	}
 	return 1
 }
+
+type PairSet struct {
+	s map[Pair]bool
+}
+
+type FreeSet struct {
+	s map[int]bool
+}
+
+func newPairSet(pp []Pair) *PairSet {
+	s := map[Pair]bool{}
+	for _, p := range pp {
+		s[p] = true
+	}
+	return &PairSet{s: s}
+}
+
+func newFreeSet(ff []int) *FreeSet {
+	s := map[int]bool{}
+	for _, f := range ff {
+		s[f] = true
+	}
+	return &FreeSet{s: s}
+}
+
+func (set *PairSet) intersect(pp []Pair) *PairSet {
+	s := map[Pair]bool{}
+	for _, p := range pp {
+		if set.s[p] {
+			s[p] = true
+		}
+	}
+	return &PairSet{s: s}
+}
+
+func (set *FreeSet) intersect(pp []int) *FreeSet {
+	s := map[int]bool{}
+	for _, p := range pp {
+		if set.s[p] {
+			s[p] = true
+		}
+	}
+	return &FreeSet{s: s}
+}
+
+func (set *PairSet) addTo(pp []Pair) []Pair {
+	ret := pp
+	for p := range set.s {
+		ret = append(ret, p)
+	}
+	return ret
+}
+
+func (set *FreeSet) addTo(pp []int) []int {
+	ret := pp
+	for p := range set.s {
+		ret = append(ret, p)
+	}
+	return ret
+}
+
+func (set *PairSet) removedFrom(pp []Pair) []Pair {
+	var ret []Pair
+	for _, p := range pp {
+		if !set.s[p] {
+			ret = append(ret, p)
+		}
+	}
+	return ret
+}
+
+func (set *FreeSet) removedFrom(pp []int) []int {
+	var ret []int
+	for _, p := range pp {
+		if !set.s[p] {
+			ret = append(ret, p)
+		}
+	}
+	return ret
+}
+
+func (f *Folding) LiftCommon() {
+	for _, b := range f.Branches {
+		b.LiftCommon()
+	}
+	if f.JoinPrefix != nil {
+		f.JoinPrefix.LiftCommon()
+		f.JoinSuffix.LiftCommon()
+	}
+
+	if len(f.Branches) > 0 {
+		pairs := newPairSet(f.Branches[0].Pairs)
+		free := newFreeSet(f.Branches[0].Free)
+		for _, b := range f.Branches {
+			pairs = pairs.intersect(b.Pairs)
+			free = free.intersect(b.Free)
+		}
+		f.Pairs = pairs.addTo(f.Pairs)
+		f.Free = free.addTo(f.Free)
+		for _, b := range f.Branches {
+			b.Pairs = pairs.removedFrom(b.Pairs)
+			b.Free = free.removedFrom(b.Free)
+		}
+	}
+}

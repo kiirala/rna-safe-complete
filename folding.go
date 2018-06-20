@@ -59,6 +59,8 @@ func main() {
 	fmt.Printf("Found %d solutions in total\n", scFoldings.CountSolutions())
 	scFoldings.CollapseTree()
 	fmt.Printf("Found %d solutions after CollapseTree\n", scFoldings.CountSolutions())
+	scFoldings.LiftCommon()
+	fmt.Printf("Found %d solutions after LiftCommon\n", scFoldings.CountSolutions())
 	fmt.Println(format.SCFolding(scFoldings))
 	/*for i, f := range allFoldings {
 		fmt.Print("\n")
