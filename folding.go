@@ -9,24 +9,53 @@ import "reflect"
 
 import "keltainen.duckdns.org/rnafolding/base"
 import "keltainen.duckdns.org/rnafolding/fasta"
+import "keltainen.duckdns.org/rnafolding/trnadb"
 import "keltainen.duckdns.org/rnafolding/nussinov"
 import "keltainen.duckdns.org/rnafolding/safecomplete"
 import "keltainen.duckdns.org/rnafolding/format"
 
 var (
 	infile = flag.String("in", "", "Name of input file in FASTA format")
+	dbfile = flag.String("db", "", "Location of tRNA database file")
+	trna   = flag.String("trna", "", "Name of tRNA sequence within database file")
 )
 
-func main() {
-	flag.Parse()
-
+func readFasta() *base.Sequence {
 	f, err := os.Open(*infile)
 	if err != nil {
 		log.Fatalf("Unable to open file \"%s\": %v", *infile, err)
 	}
 	seq, err := fasta.ReadSequence(f)
 	if err != nil {
-		log.Fatalf("Error reading FASTA format file \"%s\": %v", infile, err)
+		log.Fatalf("Error reading FASTA format file \"%s\": %v", *infile, err)
+	}
+	return seq
+}
+
+func readTRNA() *base.Sequence {
+	f, err := os.Open(*dbfile)
+	if err != nil {
+		log.Fatalf("Unable to open tRNA database \"%s\": %v", *dbfile, err)
+	}
+	seq, err := trnadb.ReadSequence(f, *trna)
+	if err != nil {
+		log.Fatalf("Error reading tRNA database file \"%s\": %v", *dbfile, err)
+	}
+	return seq
+}
+
+func main() {
+	flag.Parse()
+
+	var seq *base.Sequence
+	if *infile == "" && *dbfile == "" {
+		log.Fatal("Please specify either -in parameter or -db and -trna parameters")
+	} else if *infile != "" && *dbfile != "" {
+		log.Fatal("Specify either -in or -db parameter, not both")
+	} else if *infile != "" {
+		seq = readFasta()
+	} else {
+		seq = readTRNA()
 	}
 	fmt.Printf("Sequence \"%s\"\n", seq.Comment)
 	fmt.Printf("Contains %d bases\n", len(seq.Bases))
@@ -51,8 +80,8 @@ func main() {
 	w := safecomplete.FillArray(seq, v)
 	scFoldings := safecomplete.BacktrackAll(seq, v, w)
 	//fmt.Printf("Safe and complete version found %d foldings\n", len(allFoldings))
-	fmt.Print("Matrix v:\n", format.Matrix(v), "\n")
-	fmt.Print("Matrix w:\n", format.Matrix(w), "\n")
+	//fmt.Print("Matrix v:\n", format.Matrix(v), "\n")
+	//fmt.Print("Matrix w:\n", format.Matrix(w), "\n")
 	fmt.Printf("Found %d solutions in total\n", scFoldings.CountSolutions())
 	scFoldings.CollapseTree()
 	fmt.Printf("Found %d solutions after CollapseTree\n", scFoldings.CountSolutions())
