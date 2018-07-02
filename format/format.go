@@ -20,32 +20,72 @@ type canvas struct {
 
 func Folding(seq *base.Sequence, pairs []int) string {
 	c := &canvas{c: map[int]map[int]rune{}}
-	recursiveFolding(seq, pairs, 0, 0, 0, len(seq.Bases)-1, c)
+	recursiveFolding(seq, pairs, 0, 0, 0, len(seq.Bases)-1, 0, c)
 	return c.Draw()
 }
 
-func recursiveFolding(seq *base.Sequence, pairs []int, x, y, i, j int, c *canvas) {
+func directionToVectors(dir int) (int, int, int, int) {
+	var x, y int
+	if dir&1 == 0 {
+		x = 1
+		y = 0
+	} else {
+		x = 0
+		y = 1
+	}
+	if dir&2 == 0 {
+		return x, y, -y, x
+	}
+	return -x, -y, y, -x
+}
+
+func rotateCCW(dir int) int {
+	return (dir - 1) % 4
+}
+
+func rotateCW(dir int) int {
+	return (dir + 1) % 4
+}
+
+func recursiveFolding(seq *base.Sequence, pairs []int, x, y, i, j, dir int, c *canvas) {
+	majorx, majory, minorx, minory := directionToVectors(dir)
 	if i > j {
-		c.Set(x, y+1, "\\")
-		c.Set(x, y+2, "/")
+		//c.Set(x-minorx, y-minory, "\\")
+		//c.Set(x, y, "|")
+		//c.Set(x+minorx, y+minory, "/")
 		return
 	}
 	if pairs[i] == j {
-		c.Set(x, y+1, seq.Bases[i].ToCode())
-		c.Set(x, y+2, seq.Bases[j].ToCode())
-		recursiveFolding(seq, pairs, x+1, y, i+1, j-1, c)
+		c.Set(x-minorx, y-minory, seq.Bases[i].ToCode())
+		c.Set(x, y, "#")
+		c.Set(x+minorx, y+minory, seq.Bases[j].ToCode())
+		recursiveFolding(seq, pairs, x+majorx, y+majory, i+1, j-1, dir, c)
+	} else if pairs[i] >= 0 && pairs[j] >= 0 {
+		if pairs[i]+1 > pairs[j]-1 {
+			if pairs[i]-i > j-pairs[j] {
+				recursiveFolding(seq, pairs, x+3*majorx, y+3*majory, i, pairs[i], dir, c)
+				recursiveFolding(seq, pairs, x+majorx+2*minorx, y+majory+2*minory, pairs[j], j, rotateCW(dir), c)
+			} else {
+				recursiveFolding(seq, pairs, x+majorx-2*minorx, y+majory-2*minory, i, pairs[i], rotateCCW(dir), c)
+				recursiveFolding(seq, pairs, x+3*majorx, y+3*majory, pairs[j], j, dir, c)
+			}
+		} else {
+			recursiveFolding(seq, pairs, x+majorx-2*minorx, y+majory-2*minory, i, pairs[i], rotateCCW(dir), c)
+			recursiveFolding(seq, pairs, x+majorx+2*minorx, y+majory+2*minory, pairs[j], j, rotateCW(dir), c)
+			recursiveFolding(seq, pairs, x+3*majorx, y+3*majory, pairs[i]+1, pairs[j]-1, dir, c)
+		}
 	} else if pairs[i] < 0 && pairs[j] < 0 && i != j {
-		c.Set(x, y, seq.Bases[i].ToCode())
-		c.Set(x, y+3, seq.Bases[j].ToCode())
-		recursiveFolding(seq, pairs, x+1, y, i+1, j-1, c)
+		c.Set(x-minorx, y-minory, seq.Bases[i].ToCode())
+		c.Set(x+minorx, y+minory, seq.Bases[j].ToCode())
+		recursiveFolding(seq, pairs, x+majorx, y+majory, i+1, j-1, dir, c)
 	} else if pairs[i] < 0 {
-		c.Set(x, y, seq.Bases[i].ToCode())
-		c.Set(x, y+3, "-")
-		recursiveFolding(seq, pairs, x+1, y, i+1, j, c)
+		c.Set(x-minorx, y-minory, seq.Bases[i].ToCode())
+		c.Set(x+minorx, y+minory, "-")
+		recursiveFolding(seq, pairs, x+majorx, y+majory, i+1, j, dir, c)
 	} else {
-		c.Set(x, y, "-")
-		c.Set(x, y+3, seq.Bases[j].ToCode())
-		recursiveFolding(seq, pairs, x+1, y, i, j-1, c)
+		c.Set(x-minorx, y-minory, "-")
+		c.Set(x+minorx, y+minory, seq.Bases[j].ToCode())
+		recursiveFolding(seq, pairs, x+majorx, y+majory, i, j-1, dir, c)
 	}
 }
 
