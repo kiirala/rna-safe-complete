@@ -1,9 +1,7 @@
 package nussinov
 
-import "keltainen.duckdns.org/rnafolding/base"
-
-func FillArray(sequence *base.Sequence) [][]int {
-	numBases := len(sequence.Bases)
+func (p *Predictor) FillArray() {
+	numBases := len(p.Seq.Bases)
 	v := make([][]int, numBases)
 	for i := 0; i < numBases; i++ {
 		v[i] = make([]int, numBases)
@@ -26,7 +24,7 @@ func FillArray(sequence *base.Sequence) [][]int {
 					best = val
 				}
 			}
-			if sequence.CanPair(i, j) {
+			if p.Seq.CanPair(i, j, p.MinHairpin) {
 				if val := v[i+1][j-1] + 1; val > best {
 					best = val
 				}
@@ -35,11 +33,11 @@ func FillArray(sequence *base.Sequence) [][]int {
 		}
 	}
 
-	return v
+	p.V = v
 }
 
-func FillComplementary(sequence *base.Sequence, v [][]int) [][]int {
-	numBases := len(sequence.Bases)
+func (p *Predictor) FillComplementary() {
+	numBases := len(p.Seq.Bases)
 	w := make([][]int, numBases)
 	for i := 0; i < numBases; i++ {
 		w[i] = make([]int, numBases)
@@ -54,20 +52,20 @@ func FillComplementary(sequence *base.Sequence, v [][]int) [][]int {
 			for k := j + 1; k < i-1; k++ {
 				var val int
 				if k < numBases {
-					val = v[j+1][k] + w[i-numBases][k]
+					val = p.V[j+1][k] + w[i-numBases][k]
 				} else {
-					val = w[k+1-numBases][j] + v[k+1-numBases][i-1-numBases]
+					val = w[k+1-numBases][j] + p.V[k+1-numBases][i-1-numBases]
 				}
 				if val > best {
 					best = val
 				}
 			}
-			if sequence.CanPair((i-1)%numBases, (j+1)%numBases) {
+			if p.Seq.CanPair((i-1)%numBases, (j+1)%numBases, p.MinHairpin) {
 				var val int
 				if i-1 == numBases-1 {
-					val = v[j+2][numBases-2] + 1
+					val = p.V[j+2][numBases-2] + 1
 				} else if j+1 == numBases {
-					val = v[1][i-2-numBases] + 1
+					val = p.V[1][i-2-numBases] + 1
 				} else {
 					val = w[i-1-numBases][j+1] + 1
 				}
@@ -78,5 +76,5 @@ func FillComplementary(sequence *base.Sequence, v [][]int) [][]int {
 			w[i-numBases][j] = best
 		}
 	}
-	return w
+	p.W = w
 }

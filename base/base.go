@@ -88,8 +88,8 @@ func (b Base) CanPair(o Base) bool {
 	return false
 }
 
-func (s Sequence) CanPair(i, j int) bool {
-	return s.Bases[i].CanPair(s.Bases[j])
+func (s Sequence) CanPair(i, j, minloop int) bool {
+	return s.Bases[i].CanPair(s.Bases[j]) && (j-i > minloop || j-i < -minloop)
 }
 
 func SequenceFromString(s string) *Sequence {

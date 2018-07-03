@@ -15,9 +15,10 @@ import "keltainen.duckdns.org/rnafolding/safecomplete"
 import "keltainen.duckdns.org/rnafolding/format"
 
 var (
-	infile = flag.String("in", "", "Name of input file in FASTA format")
-	dbfile = flag.String("db", "", "Location of tRNA database file")
-	trna   = flag.String("trna", "", "Name of tRNA sequence within database file")
+	infile     = flag.String("in", "", "Name of input file in FASTA format")
+	dbfile     = flag.String("db", "", "Location of tRNA database file")
+	trna       = flag.String("trna", "", "Name of tRNA sequence within database file")
+	minhairpin = flag.Int("minhairpin", 3, "Minimum number of free bases in hairpin loop")
 )
 
 func readFasta() *base.Sequence {
@@ -60,9 +61,13 @@ func main() {
 	fmt.Printf("Sequence \"%s\"\n", seq.Comment)
 	fmt.Printf("Contains %d bases\n", len(seq.Bases))
 
-	v := nussinov.FillArray(seq)
+	nu := &nussinov.Predictor{
+		Seq:        seq,
+		MinHairpin: *minhairpin,
+	}
+	nu.FillArray()
 	//vcmpl := nussinov.FillComplementary(seq, v)
-	flen, folding := nussinov.Backtrack(seq, v)
+	flen, folding := nu.Backtrack()
 	fmt.Printf("Optimal folding, %d pairs: %v\n", flen, folding)
 	if fPairs := countPairs(folding); fPairs != flen {
 		fmt.Printf("Sanity check failed!\nOptimal folding has %d pairs, expected %d\n", fPairs, flen)
@@ -77,8 +82,13 @@ func main() {
 			}
 		}
 	*/
-	w := safecomplete.FillArray(seq, v)
-	scFoldings := safecomplete.BacktrackAll(seq, v, w)
+	sc := &safecomplete.Predictor{
+		Seq:        seq,
+		V:          nu.V,
+		MinHairpin: *minhairpin,
+	}
+	sc.FillArray()
+	scFoldings := sc.BacktrackAll()
 	//fmt.Printf("Safe and complete version found %d foldings\n", len(allFoldings))
 	//fmt.Print("Matrix v:\n", format.Matrix(v), "\n")
 	//fmt.Print("Matrix w:\n", format.Matrix(w), "\n")
@@ -127,7 +137,7 @@ func singleFoldingSanity(seq *base.Sequence, f []int, numPairs int) string {
 			k := f[j]
 			errs = append(errs, fmt.Sprintf("Non-symmetric pair: %d (%s) -> %d (%s) but %[3]d (%s) -> %d (%s)", i, seq.Bases[i].ToCode(), j, seq.Bases[j].ToCode(), k, seq.Bases[k].ToCode()))
 		}
-		if i < j && !seq.CanPair(i, j) {
+		if i < j && !seq.CanPair(i, j, *minhairpin) {
 			errs = append(errs, fmt.Sprintf("%d (%s) and %d (%s) are paired, but not a valid base pair", i, seq.Bases[i].ToCode(), j, seq.Bases[j].ToCode()))
 		}
 	}

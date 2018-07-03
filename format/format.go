@@ -4,7 +4,7 @@ import "fmt"
 import "strings"
 
 import "keltainen.duckdns.org/rnafolding/base"
-import "keltainen.duckdns.org/rnafolding/safecomplete"
+import "keltainen.duckdns.org/rnafolding/types"
 
 func Matrix(m [][]int) string {
 	strs := make([]string, len(m))
@@ -160,11 +160,11 @@ func (c *canvas) Draw() string {
 	return out
 }
 
-func SCFolding(f *safecomplete.Folding) string {
+func SCFolding(f *types.Folding) string {
 	return recursiveSCFolding(f, 0)
 }
 
-func recursiveSCFolding(f *safecomplete.Folding, depth int) string {
+func recursiveSCFolding(f *types.Folding, depth int) string {
 	out := ""
 	indent := ""
 	for i := 0; i < depth; i++ {

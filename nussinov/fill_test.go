@@ -42,8 +42,10 @@ func TestFillArray(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		if actual := FillArray(&base.Sequence{Bases: tt.bases}); !reflect.DeepEqual(tt.expected, actual) {
-			t.Errorf("FillArray(%v):\nexpected:\n%v\nactual:\n%v", tt.bases, format.Matrix(tt.expected), format.Matrix(actual))
+		p := &Predictor{Seq: &base.Sequence{Bases: tt.bases}}
+		p.FillArray()
+		if !reflect.DeepEqual(tt.expected, p.V) {
+			t.Errorf("FillArray(%v):\nexpected:\n%v\nactual:\n%v", tt.bases, format.Matrix(tt.expected), format.Matrix(p.V))
 		}
 	}
 }
@@ -93,8 +95,10 @@ func TestFillComplementary(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		if actual := FillComplementary(&base.Sequence{Bases: tt.bases}, tt.v); !reflect.DeepEqual(tt.expected, actual) {
-			t.Errorf("FillComplementary(%v):\nexpected:\n%v\nactual:\n%v", tt.bases, format.Matrix(tt.expected), format.Matrix(actual))
+		p := &Predictor{Seq: &base.Sequence{Bases: tt.bases}, V: tt.v}
+		p.FillComplementary()
+		if !reflect.DeepEqual(tt.expected, p.W) {
+			t.Errorf("FillComplementary(%v):\nexpected:\n%v\nactual:\n%v", tt.bases, format.Matrix(tt.expected), format.Matrix(p.W))
 		}
 	}
 }
