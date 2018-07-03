@@ -35,15 +35,19 @@ func (f *Folding) CollapseTree() {
 	if f.JoinPrefix != nil {
 		f.JoinPrefix.CollapseTree()
 		f.JoinSuffix.CollapseTree()
+		f.Pairs = append(f.Pairs, f.JoinPrefix.Pairs...)
+		f.JoinPrefix.Pairs = nil
+		f.Free = append(f.Free, f.JoinPrefix.Free...)
+		f.JoinPrefix.Free = nil
+		f.Pairs = append(f.Pairs, f.JoinSuffix.Pairs...)
+		f.JoinSuffix.Pairs = nil
+		f.Free = append(f.Free, f.JoinSuffix.Free...)
+		f.JoinSuffix.Free = nil
 
 		if branchless(f.JoinPrefix) || branchless(f.JoinSuffix) {
 			pref := f.JoinPrefix
 			suff := f.JoinSuffix
-			f.Pairs = append(f.Pairs, pref.Pairs...)
-			f.Free = append(f.Free, pref.Free...)
 			f.JoinPrefix = nil
-			f.Pairs = append(f.Pairs, suff.Pairs...)
-			f.Free = append(f.Free, suff.Free...)
 			f.JoinSuffix = nil
 			if !branchless(pref) {
 				liftBranches(f, pref)

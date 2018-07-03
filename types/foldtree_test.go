@@ -40,9 +40,8 @@ func TestCollapseTreeAlternatives(t *testing.T) {
 	}
 
 	expected := &Folding{
-		Pairs: []Pair{Pair{I: 0, J: 13}, Pair{I: 1, J: 2}},
+		Pairs: []Pair{Pair{I: 0, J: 13}, Pair{I: 1, J: 2}, Pair{I: 3, J: 7}, Pair{I: 8, J: 12}},
 		JoinPrefix: &Folding{
-			Pairs: []Pair{Pair{I: 3, J: 7}},
 			Branches: []*Folding{
 				&Folding{
 					Free:  []int{4},
@@ -55,7 +54,6 @@ func TestCollapseTreeAlternatives(t *testing.T) {
 			},
 		},
 		JoinSuffix: &Folding{
-			Pairs: []Pair{Pair{I: 8, J: 12}},
 			Branches: []*Folding{
 				&Folding{
 					Free:  []int{9},
