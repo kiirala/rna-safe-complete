@@ -1,5 +1,8 @@
 package types
 
+import "fmt"
+import "strings"
+
 import "keltainen.duckdns.org/rnafolding/base"
 
 type Pair struct {
@@ -36,17 +39,17 @@ func (f *Folding) CollapseTree() {
 		if branchless(f.JoinPrefix) || branchless(f.JoinSuffix) {
 			pref := f.JoinPrefix
 			suff := f.JoinSuffix
-			if !branchless(pref) {
-				liftBranches(f, pref)
-			} else if !branchless(suff) {
-				liftBranches(f, suff)
-			}
 			f.Pairs = append(f.Pairs, pref.Pairs...)
 			f.Free = append(f.Free, pref.Free...)
 			f.JoinPrefix = nil
 			f.Pairs = append(f.Pairs, suff.Pairs...)
 			f.Free = append(f.Free, suff.Free...)
 			f.JoinSuffix = nil
+			if !branchless(pref) {
+				liftBranches(f, pref)
+			} else if !branchless(suff) {
+				liftBranches(f, suff)
+			}
 		}
 	}
 }
@@ -212,4 +215,43 @@ func (f *Folding) GeneratePairArrays(seq *base.Sequence) [][]int {
 		}
 	}
 	return pp
+}
+
+func (f *Folding) String() string {
+	return recursiveSCFolding(f, 0)
+}
+
+func recursiveSCFolding(f *Folding, depth int) string {
+	out := ""
+	indent := ""
+	for i := 0; i < depth; i++ {
+		indent += "    "
+	}
+	if len(f.Pairs) > 0 {
+		out += indent + "Pairs: "
+		var pairs []string
+		for _, p := range f.Pairs {
+			pairs = append(pairs, fmt.Sprintf("(%d,%d)", p.I, p.J))
+		}
+		out += strings.Join(pairs, ", ") + "\n"
+	}
+	if len(f.Free) > 0 {
+		out += indent + "Free: "
+		var free []string
+		for _, i := range f.Free {
+			free = append(free, fmt.Sprintf("%d", i))
+		}
+		out += strings.Join(free, ", ") + "\n"
+	}
+	if f.JoinPrefix != nil {
+		out += indent + "Join prefix:\n"
+		out += recursiveSCFolding(f.JoinPrefix, depth+1)
+		out += indent + "Join suffix:\n"
+		out += recursiveSCFolding(f.JoinSuffix, depth+1)
+	}
+	for i, b := range f.Branches {
+		out += fmt.Sprintf("%sAlternative %d of %d:\n", indent, i+1, len(f.Branches))
+		out += recursiveSCFolding(b, depth+1)
+	}
+	return out
 }

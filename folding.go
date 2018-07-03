@@ -89,12 +89,13 @@ func main() {
 	}
 	sc.FillArray()
 	scFoldings := sc.BacktrackAll()
-	//fmt.Printf("Safe and complete version found %d foldings\n", len(allFoldings))
 	//fmt.Print("Matrix v:\n", format.Matrix(v), "\n")
 	//fmt.Print("Matrix w:\n", format.Matrix(w), "\n")
 	fmt.Printf("Found %d solutions in total\n", scFoldings.CountSolutions())
+	//fmt.Println(scFoldings)
 	scFoldings.CollapseTree()
 	fmt.Printf("Found %d solutions after CollapseTree\n", scFoldings.CountSolutions())
+	//fmt.Println(scFoldings)
 	scFoldings.LiftCommon()
 	fmt.Printf("Found %d solutions after LiftCommon\n", scFoldings.CountSolutions())
 
@@ -111,7 +112,7 @@ func main() {
 		}
 	}
 
-	fmt.Println(format.SCFolding(scFoldings))
+	fmt.Println(scFoldings)
 	/*
 		for _, f := range scPairArrays {
 			fmt.Print("\n")
