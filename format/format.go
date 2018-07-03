@@ -20,7 +20,9 @@ type canvas struct {
 
 func Folding(seq *base.Sequence, pairs []int) string {
 	c := &canvas{c: map[int]map[int]rune{}}
-	recursiveFolding(seq, pairs, 0, 0, 0, len(seq.Bases)-1, 0, c)
+	c.Set(0, -1, ">")
+	c.Set(0, 1, "<")
+	recursiveFolding(seq, pairs, 1, 0, 0, len(seq.Bases)-1, 0, c)
 	return c.Draw()
 }
 
