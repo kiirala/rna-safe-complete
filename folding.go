@@ -11,6 +11,7 @@ import "keltainen.duckdns.org/rnafolding/base"
 import "keltainen.duckdns.org/rnafolding/fasta"
 import "keltainen.duckdns.org/rnafolding/trnadb"
 import "keltainen.duckdns.org/rnafolding/nussinov"
+import "keltainen.duckdns.org/rnafolding/wuchty"
 import "keltainen.duckdns.org/rnafolding/safecomplete"
 import "keltainen.duckdns.org/rnafolding/format"
 
@@ -66,7 +67,7 @@ func main() {
 		MinHairpin: *minhairpin,
 	}
 	nu.FillArray()
-	//vcmpl := nussinov.FillComplementary(seq, v)
+	nu.FillComplementary()
 	flen, folding := nu.Backtrack()
 	fmt.Printf("Optimal folding, %d pairs: %v\n", flen, folding)
 	if fPairs := countPairs(folding); fPairs != flen {
@@ -82,12 +83,35 @@ func main() {
 			}
 		}
 	*/
+
+	wu := &wuchty.Predictor{
+		Seq:        seq,
+		MinHairpin: *minhairpin,
+	}
+	wu.FillArray()
+	if !reflect.DeepEqual(nu.V, wu.V) {
+		fmt.Printf("Sanity check failed! Nussinov folding and Wuchty folding produced different DP arrays!\n")
+	}
+	wuFoldings := wu.BacktrackAll()
+	fmt.Printf("Wuchty predictor produced %d foldings\n", len(wuFoldings))
+	if sanity := allFoldingsSanity(seq, wuFoldings); sanity != "" {
+		fmt.Print("Sanity check failed!\n", sanity, "\n")
+	}
+	for _, f := range wuFoldings {
+		if sanity := singleFoldingSanity(seq, f, flen); len(sanity) > 0 {
+			fmt.Print("Sanity check failed!\n", sanity, "\n")
+			fmt.Println(f)
+			//fmt.Print(format.Folding(seq, f))
+		}
+	}
+
 	sc := &safecomplete.Predictor{
 		Seq:        seq,
 		V:          nu.V,
 		MinHairpin: *minhairpin,
 	}
 	sc.FillArray()
+
 	scFoldings := sc.BacktrackAll()
 	//fmt.Print("Matrix v:\n", format.Matrix(v), "\n")
 	//fmt.Print("Matrix w:\n", format.Matrix(w), "\n")
