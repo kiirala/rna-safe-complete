@@ -15,6 +15,7 @@ func (p *Predictor) recursiveBacktrack(i, j int, folding *types.Folding) {
 		}
 		return
 	}
+
 	numFound := 0
 	if p.Seq.CanPair(i, j, p.MinHairpin) && p.V[i][j] == p.V[i+1][j-1]+1 {
 		numFound++
@@ -24,6 +25,10 @@ func (p *Predictor) recursiveBacktrack(i, j int, folding *types.Folding) {
 			numFound++
 		}
 	}
+	if p.V[i][j] == p.V[i][j-1] {
+		numFound++
+	}
+
 	if p.Seq.CanPair(i, j, p.MinHairpin) && p.V[i][j] == p.V[i+1][j-1]+1 {
 		branch := folding
 		if numFound > 1 {
@@ -48,15 +53,29 @@ func (p *Predictor) recursiveBacktrack(i, j int, folding *types.Folding) {
 			p.recursiveBacktrack(k+2, j-1, branch.JoinSuffix)
 		}
 	}
-	if numFound == 0 {
-		for k := i; k < j; k++ {
-			if p.V[i][j] == p.V[i][k]+p.V[k+1][j] {
-				folding.JoinPrefix = &types.Folding{}
-				p.recursiveBacktrack(i, k, folding.JoinPrefix)
-				folding.JoinSuffix = &types.Folding{}
-				p.recursiveBacktrack(k+1, j, folding.JoinSuffix)
-				break
+	if p.V[i][j] == p.V[i][j-1] {
+		branch := folding
+		if numFound > 1 {
+			branch = &types.Folding{}
+			folding.Branches = append(folding.Branches, branch)
+		}
+		branch.JoinPrefix = &types.Folding{}
+		p.recursiveBacktrack(i, j-1, branch.JoinPrefix)
+		branch.JoinSuffix = &types.Folding{}
+		p.recursiveBacktrack(j, j, branch.JoinSuffix)
+	}
+
+	/*
+		if numFound == 0 {
+			for k := j - 1; k >= i; k-- {
+				if p.V[i][j] == p.V[i][k]+p.V[k+1][j] {
+					folding.JoinPrefix = &types.Folding{}
+					p.recursiveBacktrack(i, k, folding.JoinPrefix)
+					folding.JoinSuffix = &types.Folding{}
+					p.recursiveBacktrack(k+1, j, folding.JoinSuffix)
+					break
+				}
 			}
 		}
-	}
+	*/
 }

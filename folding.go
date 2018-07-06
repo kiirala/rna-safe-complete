@@ -107,7 +107,7 @@ func main() {
 			fmt.Print("Sanity check failed!\n", sanity, "\n")
 			fmt.Println(f)
 		}
-		fmt.Println(format.Folding(seq, f))
+		//fmt.Println(format.Folding(seq, f))
 	}
 
 	sc := &safecomplete.Predictor{
