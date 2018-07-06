@@ -60,7 +60,8 @@ func main() {
 		seq = readTRNA()
 	}
 	fmt.Printf("Sequence \"%s\"\n", seq.Comment)
-	fmt.Printf("Contains %d bases\n", len(seq.Bases))
+	fmt.Printf("Contains %d bases\n\n", len(seq.Bases))
+	fmt.Printf("Folding rules:\n  * hairpin loop must contain at least %d free bases\n\n", *minhairpin)
 
 	nu := &nussinov.Predictor{
 		Seq:        seq,
