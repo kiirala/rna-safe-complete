@@ -73,16 +73,20 @@ func main() {
 	if fPairs := countPairs(folding); fPairs != flen {
 		fmt.Printf("Sanity check failed!\nOptimal folding has %d pairs, expected %d\n", fPairs, flen)
 	}
-	fmt.Printf(format.Folding(seq, folding))
-	/*
-		for i := 0; i < len(v); i++ {
-			for j := i + 1; j < len(v); j++ {
-				solen, sopairs := nussinov.JoinedBacktrack(seq, v, vcmpl, i, j)
-				fmt.Printf("Joining [%d, %d], %d pairs\n", i, j, solen)
-				fmt.Print(format.Folding(seq, sopairs))
+	zukerOptimals := [][]int{folding}
+	for i := 0; i < len(seq.Bases); i++ {
+		for j := i + 1; j < len(seq.Bases); j++ {
+			solen, sopairs := nu.JoinedBacktrack(i, j)
+			if solen == flen && !foldingInArray(sopairs, zukerOptimals) {
+				zukerOptimals = append(zukerOptimals, sopairs)
 			}
 		}
-	*/
+	}
+	fmt.Printf("Zuker method found %d optimal solutions\n", len(zukerOptimals))
+	//for _, f := range zukerOptimals {
+	//	fmt.Printf(format.Folding(seq, f))
+	//	fmt.Println()
+	//}
 
 	wu := &wuchty.Predictor{
 		Seq:        seq,
@@ -102,8 +106,8 @@ func main() {
 		if sanity := singleFoldingSanity(seq, f, flen); len(sanity) > 0 {
 			fmt.Print("Sanity check failed!\n", sanity, "\n")
 			fmt.Println(f)
-			//fmt.Print(format.Folding(seq, f))
 		}
+		fmt.Println(format.Folding(seq, f))
 	}
 
 	sc := &safecomplete.Predictor{
@@ -138,6 +142,7 @@ func main() {
 	}
 
 	fmt.Println(scFoldings)
+	fmt.Printf(format.Folding(seq, scPairArrays[0]))
 	/*
 		for _, f := range scPairArrays {
 			fmt.Print("\n")
@@ -196,4 +201,26 @@ func allFoldingsSanity(seq *base.Sequence, foldings [][]int) string {
 		}
 	}
 	return strings.Join(errs, "\n")
+}
+
+func arraysEqual(a, b []int) bool {
+	if len(a) != len(b) {
+		log.Printf("arraysEqual: array lengths different! len(a)=%d, len(b)=%d", len(a), len(b))
+		return false
+	}
+	for i := 0; i < len(a); i++ {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func foldingInArray(f []int, ff [][]int) bool {
+	for _, o := range ff {
+		if arraysEqual(f, o) {
+			return true
+		}
+	}
+	return false
 }

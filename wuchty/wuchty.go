@@ -5,6 +5,7 @@
 package wuchty
 
 import "log"
+import "fmt"
 
 import "keltainen.duckdns.org/rnafolding/base"
 
@@ -52,6 +53,7 @@ type pair struct {
 type state struct {
 	intervals []pair
 	pairs     []pair
+	structure string
 }
 
 func pairsToArray(pp []pair, l int) []int {
@@ -66,32 +68,39 @@ func pairsToArray(pp []pair, l int) []int {
 	return a
 }
 
+func refinedStructure(s state, i, p []pair, str string) state {
+	ints := make([]pair, len(s.intervals), len(s.intervals)+len(i))
+	copy(ints, s.intervals)
+	ints = append(ints, i...)
+	pairs := make([]pair, len(s.pairs), len(s.pairs)+len(p))
+	copy(pairs, s.pairs)
+	pairs = append(pairs, p...)
+	return state{ints, pairs, s.structure + str}
+}
+
 func (p *Predictor) BacktrackAll() [][]int {
 	var out [][]int
 	stack := []state{
 		state{
 			[]pair{pair{0, len(p.Seq.Bases) - 1}},
 			nil,
+			"",
 		},
 	}
 
 	for len(stack) > 0 {
-		//log.Printf("Pop from stack, length %d", len(stack))
 		var s state
 		stack, s = stack[:len(stack)-1], stack[len(stack)-1]
-		//log.Printf("Stack length %d", len(stack))
 		if len(s.intervals) == 0 {
 			out = append(out, pairsToArray(s.pairs, len(p.Seq.Bases)))
-			//log.Printf("Found pairing with %d pairs", len(s.pairs))
+			//log.Println(s.structure)
 			continue
 		}
-		//log.Printf("Stack length after %d", len(stack))
 		numfound := 0
 		var interval pair
 		s.intervals, interval = s.intervals[:len(s.intervals)-1], s.intervals[len(s.intervals)-1]
-		//log.Printf("Examining interval [%d, %d], %d pairs found", interval.i, interval.j, len(s.pairs))
 		if interval.i < interval.j && p.V[interval.i][interval.j] == p.V[interval.i][interval.j-1] {
-			stack = append(stack, state{append(s.intervals, pair{interval.i, interval.j - 1}), s.pairs})
+			stack = append(stack, refinedStructure(s, []pair{pair{interval.i, interval.j - 1}}, nil, fmt.Sprintf("d(%d,%d) ", interval.i, interval.j-1)))
 			numfound++
 		}
 
@@ -108,17 +117,17 @@ func (p *Predictor) BacktrackAll() [][]int {
 				val += p.V[interval.i][l-1]
 			}
 			if p.V[interval.i][interval.j] == val {
-				stack = append(stack,
-					state{
-						append(s.intervals, pair{interval.i, l - 1}, pair{l + 1, interval.j - 1}),
-						append(s.pairs, pair{l, interval.j})})
+				stack = append(stack, refinedStructure(
+					s,
+					[]pair{pair{interval.i, l - 1}, pair{l + 1, interval.j - 1}},
+					[]pair{pair{l, interval.j}},
+					fmt.Sprintf("p(%d,%d) j(%d,%d)(%d,%d) ", l, interval.j, interval.i, l-1, l+1, interval.j-1)))
 				numfound++
 			}
 		}
 
 		if numfound == 0 {
-			//log.Print("Default push to stack")
-			stack = append(stack, s)
+			stack = append(stack, state{s.intervals, s.pairs, s.structure + fmt.Sprintf("pop(%d,%d) ", interval.i, interval.j)})
 		}
 		if len(stack) >= p.MaxStack {
 			log.Printf("Stack overflow in wuchty.BacktrackAll: %d items, max %d", len(stack), p.MaxStack)
