@@ -191,9 +191,8 @@ func countPairs(f []int) int {
 
 func allFoldingsSanity(seq *base.Sequence, foldings [][]int) string {
 	var errs []string
-	// Check all-pairs Nussinov is subset of all solutions
-	// Check that safe and complete produces same solutions as existing all-solutions
-	// Check that there are no duplicate solutions
+	// Check that all-pairs Nussinov solutions are a subset of all solutions
+	// Check that safe and complete produces same solutions as Wuchty all-solutions
 	for i := 0; i < len(foldings); i++ {
 		for j := i + 1; j < len(foldings); j++ {
 			if reflect.DeepEqual(foldings[i], foldings[j]) {
