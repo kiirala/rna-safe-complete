@@ -4,6 +4,8 @@
 // Biopolymers, 1999, vol. 49, no. 2, pages 145–165.
 package wuchty
 
+import "log"
+
 import "keltainen.duckdns.org/rnafolding/base"
 
 type Predictor struct {
@@ -11,6 +13,7 @@ type Predictor struct {
 	V   [][]int
 
 	MinHairpin int
+	MaxStack   int
 }
 
 func (p *Predictor) FillArray() {
@@ -18,13 +21,6 @@ func (p *Predictor) FillArray() {
 	v := make([][]int, numBases)
 	for i := 0; i < numBases; i++ {
 		v[i] = make([]int, numBases)
-	}
-
-	for i := 0; i < numBases; i++ {
-		v[i][i] = 0
-		if i > 0 {
-			v[i-1][i] = 0
-		}
 	}
 
 	for i := numBases - 1; i >= 0; i-- {
@@ -58,10 +54,6 @@ type state struct {
 	pairs     []pair
 }
 
-func pop(s []pair) ([]pair, pair) {
-	return s[:len(s)-1], s[len(s)-1]
-}
-
 func pairsToArray(pp []pair, l int) []int {
 	a := make([]int, l)
 	for i := 0; i < len(a); i++ {
@@ -82,20 +74,31 @@ func (p *Predictor) BacktrackAll() [][]int {
 			nil,
 		},
 	}
+
 	for len(stack) > 0 {
-		s := stack[len(stack)-1]
-		stack = stack[:len(stack)-1]
+		//log.Printf("Pop from stack, length %d", len(stack))
+		var s state
+		stack, s = stack[:len(stack)-1], stack[len(stack)-1]
+		//log.Printf("Stack length %d", len(stack))
 		if len(s.intervals) == 0 {
 			out = append(out, pairsToArray(s.pairs, len(p.Seq.Bases)))
+			//log.Printf("Found pairing with %d pairs", len(s.pairs))
 			continue
 		}
+		//log.Printf("Stack length after %d", len(stack))
 		numfound := 0
 		var interval pair
-		s.intervals, interval = pop(s.intervals)
+		s.intervals, interval = s.intervals[:len(s.intervals)-1], s.intervals[len(s.intervals)-1]
+		//log.Printf("Examining interval [%d, %d], %d pairs found", interval.i, interval.j, len(s.pairs))
 		if interval.i < interval.j && p.V[interval.i][interval.j] == p.V[interval.i][interval.j-1] {
-			stack = append(stack, state{append(s.intervals, pair{i: interval.i, j: interval.j - 1}), s.pairs})
+			stack = append(stack, state{append(s.intervals, pair{interval.i, interval.j - 1}), s.pairs})
 			numfound++
 		}
+
+		//if numfound > 0 {
+		//	continue
+		//}
+
 		for l := interval.i; l < interval.j; l++ {
 			if !p.Seq.CanPair(l, interval.j, p.MinHairpin) {
 				continue
@@ -107,13 +110,19 @@ func (p *Predictor) BacktrackAll() [][]int {
 			if p.V[interval.i][interval.j] == val {
 				stack = append(stack,
 					state{
-						append(s.intervals, pair{i: interval.i, j: l - 1}, pair{i: l + 1, j: interval.j - 1}),
+						append(s.intervals, pair{interval.i, l - 1}, pair{l + 1, interval.j - 1}),
 						append(s.pairs, pair{l, interval.j})})
 				numfound++
 			}
 		}
+
 		if numfound == 0 {
+			//log.Print("Default push to stack")
 			stack = append(stack, s)
+		}
+		if len(stack) >= p.MaxStack {
+			log.Printf("Stack overflow in wuchty.BacktrackAll: %d items, max %d", len(stack), p.MaxStack)
+			break
 		}
 	}
 	return out

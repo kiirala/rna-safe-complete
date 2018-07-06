@@ -87,6 +87,7 @@ func main() {
 	wu := &wuchty.Predictor{
 		Seq:        seq,
 		MinHairpin: *minhairpin,
+		MaxStack:   10000,
 	}
 	wu.FillArray()
 	if !reflect.DeepEqual(nu.V, wu.V) {
