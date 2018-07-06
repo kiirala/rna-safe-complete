@@ -4,6 +4,7 @@ import "flag"
 import "fmt"
 import "log"
 import "os"
+import "sort"
 import "strings"
 import "reflect"
 
@@ -72,7 +73,7 @@ func main() {
 	flen, folding := nu.Backtrack()
 	fmt.Printf("Optimal folding, %d pairs: %v\n", flen, folding)
 	if fPairs := countPairs(folding); fPairs != flen {
-		fmt.Printf("Sanity check failed!\nOptimal folding has %d pairs, expected %d\n", fPairs, flen)
+		log.Printf("Sanity check failed!\nOptimal folding has %d pairs, expected %d\n", fPairs, flen)
 	}
 	zukerOptimals := [][]int{folding}
 	for i := 0; i < len(seq.Bases); i++ {
@@ -96,17 +97,20 @@ func main() {
 	}
 	wu.FillArray()
 	if !reflect.DeepEqual(nu.V, wu.V) {
-		fmt.Printf("Sanity check failed! Nussinov folding and Wuchty folding produced different DP arrays!\n")
+		log.Printf("Sanity check failed! Nussinov folding and Wuchty folding produced different DP arrays!\n")
 	}
 	wuFoldings := wu.BacktrackAll()
 	fmt.Printf("Wuchty predictor produced %d foldings\n", len(wuFoldings))
+	if !isSubsetOf(zukerOptimals, wuFoldings) {
+		log.Printf("Sanity check failed! Zuker method found solutions that Wuchty method didn't\n")
+	}
 	if sanity := allFoldingsSanity(seq, wuFoldings); sanity != "" {
-		fmt.Print("Sanity check failed!\n", sanity, "\n")
+		log.Print("Sanity check failed!\n", sanity, "\n")
 	}
 	for _, f := range wuFoldings {
 		if sanity := singleFoldingSanity(seq, f, flen); len(sanity) > 0 {
-			fmt.Print("Sanity check failed!\n", sanity, "\n")
-			fmt.Println(f)
+			log.Print("Sanity check failed!\n", sanity, "\n")
+			log.Println(f)
 		}
 		//fmt.Println(format.Folding(seq, f))
 	}
@@ -132,16 +136,18 @@ func main() {
 	scPairArrays := scFoldings.GeneratePairArrays(seq)
 	fmt.Printf("Folding tree -> folding arrays conversion produced %d foldings\n", len(scPairArrays))
 	if sanity := allFoldingsSanity(seq, scPairArrays); sanity != "" {
-		fmt.Print("Sanity check failed!\n", sanity, "\n")
+		log.Print("Sanity check failed!\n", sanity, "\n")
 	}
 	for _, f := range scPairArrays {
 		if sanity := singleFoldingSanity(seq, f, flen); len(sanity) > 0 {
-			fmt.Print("Sanity check failed!\n", sanity, "\n")
-			fmt.Println(f)
-			fmt.Print(format.Folding(seq, f))
+			log.Print("Sanity check failed!\n", sanity, "\n")
+			log.Println(f)
+			log.Print(format.Folding(seq, f))
 		}
 	}
-
+	if !foldingSetsEqual(wuFoldings, scPairArrays) {
+		log.Print("Sanity check failed! Wuchty method and safe & complete method produced different foldings")
+	}
 	fmt.Println(scFoldings)
 	fmt.Printf(format.Folding(seq, scPairArrays[0]))
 	/*
@@ -189,10 +195,78 @@ func countPairs(f []int) int {
 	return c / 2
 }
 
+type FoldingSet [][]int
+
+type FoldingOrdering struct{ FoldingSet }
+
+func (f FoldingOrdering) Len() int {
+	return len(f.FoldingSet)
+}
+
+func (f FoldingOrdering) Swap(i, j int) {
+	f.FoldingSet[i], f.FoldingSet[j] = f.FoldingSet[j], f.FoldingSet[i]
+}
+
+func (f FoldingOrdering) Less(i, j int) bool {
+	a := f.FoldingSet[i]
+	b := f.FoldingSet[j]
+	if len(a) != len(b) {
+		log.Printf("arrLess: array lenths different! len(f[%d])=%d, len(f[%d])=%d", i, len(a), j, len(b))
+		return len(a) < len(b)
+	}
+	for n := 0; n < len(a); n++ {
+		if a[n] < b[n] {
+			return true
+		}
+		if a[n] > b[n] {
+			return false
+		}
+	}
+	return false
+}
+
+func isSubsetOf(sub [][]int, all [][]int) bool {
+	ssub := make([][]int, len(sub))
+	copy(ssub, sub)
+	sort.Sort(FoldingOrdering{ssub})
+	sall := make([][]int, len(all))
+	copy(sall, all)
+	sort.Sort(FoldingOrdering{sall})
+	iall := 0
+	isub := 0
+	for iall < len(sall) && isub < len(ssub) {
+		if foldingArraysEqual(sall[iall], ssub[isub]) {
+			isub++
+		}
+		iall++
+	}
+	if isub < len(ssub) {
+		return false
+	}
+	return true
+}
+
+func foldingSetsEqual(a [][]int, b [][]int) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	sa := make([][]int, len(a))
+	copy(sa, a)
+	sort.Sort(FoldingOrdering{sa})
+	sb := make([][]int, len(b))
+	copy(sb, b)
+	sort.Sort(FoldingOrdering{sb})
+	for i := 0; i < len(sa); i++ {
+		if !foldingArraysEqual(sa[i], sb[i]) {
+			log.Printf("foldingSetsEqual: difference found!\na=%v\nb=%v", sa[i], sb[i])
+			return false
+		}
+	}
+	return true
+}
+
 func allFoldingsSanity(seq *base.Sequence, foldings [][]int) string {
 	var errs []string
-	// Check that all-pairs Nussinov solutions are a subset of all solutions
-	// Check that safe and complete produces same solutions as Wuchty all-solutions
 	for i := 0; i < len(foldings); i++ {
 		for j := i + 1; j < len(foldings); j++ {
 			if reflect.DeepEqual(foldings[i], foldings[j]) {
@@ -203,13 +277,13 @@ func allFoldingsSanity(seq *base.Sequence, foldings [][]int) string {
 	return strings.Join(errs, "\n")
 }
 
-func arraysEqual(a, b []int) bool {
+func foldingArraysEqual(a, b []int) bool {
 	if len(a) != len(b) {
 		log.Printf("arraysEqual: array lengths different! len(a)=%d, len(b)=%d", len(a), len(b))
 		return false
 	}
 	for i := 0; i < len(a); i++ {
-		if a[i] != b[i] {
+		if a[i] != b[i] && (a[i] >= 0 || b[i] >= 0) {
 			return false
 		}
 	}
@@ -218,7 +292,7 @@ func arraysEqual(a, b []int) bool {
 
 func foldingInArray(f []int, ff [][]int) bool {
 	for _, o := range ff {
-		if arraysEqual(f, o) {
+		if foldingArraysEqual(f, o) {
 			return true
 		}
 	}
