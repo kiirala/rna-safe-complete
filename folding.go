@@ -149,7 +149,7 @@ func main() {
 		log.Print("Sanity check failed! Wuchty method and safe & complete method produced different foldings")
 	}
 	fmt.Println(scFoldings)
-	fmt.Printf(format.Folding(seq, scPairArrays[0]))
+	fmt.Printf(format.FoldingWithSafety(seq, scPairArrays[0], safecomplete.TrivialSafety(scPairArrays)))
 	/*
 		for _, f := range scPairArrays {
 			fmt.Print("\n")

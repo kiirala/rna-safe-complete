@@ -18,10 +18,18 @@ type canvas struct {
 }
 
 func Folding(seq *base.Sequence, pairs []int) string {
+	safety := make([]bool, len(pairs))
+	for i := 0; i < len(safety); i++ {
+		safety[i] = true
+	}
+	return FoldingWithSafety(seq, pairs, safety)
+}
+
+func FoldingWithSafety(seq *base.Sequence, pairs []int, safety []bool) string {
 	c := &canvas{c: map[int]map[int]rune{}}
 	c.Set(0, -1, ">")
 	c.Set(0, 1, "<")
-	recursiveFolding(seq, pairs, 1, 0, 0, len(seq.Bases)-1, 0, c)
+	recursiveFolding(seq, pairs, safety, 1, 0, 0, len(seq.Bases)-1, 0, c)
 	return c.Draw()
 }
 
@@ -48,7 +56,7 @@ func rotateCW(dir int) int {
 	return (dir + 1) % 4
 }
 
-func recursiveFolding(seq *base.Sequence, pairs []int, x, y, i, j, dir int, c *canvas) {
+func recursiveFolding(seq *base.Sequence, pairs []int, safety []bool, x, y, i, j, dir int, c *canvas) {
 	majorx, majory, minorx, minory := directionToVectors(dir)
 	if i > j {
 		//c.Set(x-minorx, y-minory, "\\")
@@ -57,36 +65,36 @@ func recursiveFolding(seq *base.Sequence, pairs []int, x, y, i, j, dir int, c *c
 		return
 	}
 	if pairs[i] == j {
-		c.Set(x-minorx, y-minory, seq.Bases[i].ToCode())
+		c.Set(x-minorx, y-minory, seq.Bases[i].CodeAndSafety(safety[i]))
 		c.Set(x, y, "#")
-		c.Set(x+minorx, y+minory, seq.Bases[j].ToCode())
-		recursiveFolding(seq, pairs, x+majorx, y+majory, i+1, j-1, dir, c)
+		c.Set(x+minorx, y+minory, seq.Bases[j].CodeAndSafety(safety[j]))
+		recursiveFolding(seq, pairs, safety, x+majorx, y+majory, i+1, j-1, dir, c)
 	} else if pairs[i] >= 0 && pairs[j] >= 0 {
 		if pairs[i]+1 > pairs[j]-1 {
 			if pairs[i]-i > j-pairs[j] {
-				recursiveFolding(seq, pairs, x+3*majorx, y+3*majory, i, pairs[i], dir, c)
-				recursiveFolding(seq, pairs, x+majorx+2*minorx, y+majory+2*minory, pairs[j], j, rotateCW(dir), c)
+				recursiveFolding(seq, pairs, safety, x+3*majorx, y+3*majory, i, pairs[i], dir, c)
+				recursiveFolding(seq, pairs, safety, x+majorx+2*minorx, y+majory+2*minory, pairs[j], j, rotateCW(dir), c)
 			} else {
-				recursiveFolding(seq, pairs, x+majorx-2*minorx, y+majory-2*minory, i, pairs[i], rotateCCW(dir), c)
-				recursiveFolding(seq, pairs, x+3*majorx, y+3*majory, pairs[j], j, dir, c)
+				recursiveFolding(seq, pairs, safety, x+majorx-2*minorx, y+majory-2*minory, i, pairs[i], rotateCCW(dir), c)
+				recursiveFolding(seq, pairs, safety, x+3*majorx, y+3*majory, pairs[j], j, dir, c)
 			}
 		} else {
-			recursiveFolding(seq, pairs, x+majorx-2*minorx, y+majory-2*minory, i, pairs[i], rotateCCW(dir), c)
-			recursiveFolding(seq, pairs, x+majorx+2*minorx, y+majory+2*minory, pairs[j], j, rotateCW(dir), c)
-			recursiveFolding(seq, pairs, x+3*majorx, y+3*majory, pairs[i]+1, pairs[j]-1, dir, c)
+			recursiveFolding(seq, pairs, safety, x+majorx-2*minorx, y+majory-2*minory, i, pairs[i], rotateCCW(dir), c)
+			recursiveFolding(seq, pairs, safety, x+majorx+2*minorx, y+majory+2*minory, pairs[j], j, rotateCW(dir), c)
+			recursiveFolding(seq, pairs, safety, x+3*majorx, y+3*majory, pairs[i]+1, pairs[j]-1, dir, c)
 		}
 	} else if pairs[i] < 0 && pairs[j] < 0 && i != j {
-		c.Set(x-minorx, y-minory, seq.Bases[i].ToCode())
-		c.Set(x+minorx, y+minory, seq.Bases[j].ToCode())
-		recursiveFolding(seq, pairs, x+majorx, y+majory, i+1, j-1, dir, c)
+		c.Set(x-minorx, y-minory, seq.Bases[i].CodeAndSafety(safety[i]))
+		c.Set(x+minorx, y+minory, seq.Bases[j].CodeAndSafety(safety[j]))
+		recursiveFolding(seq, pairs, safety, x+majorx, y+majory, i+1, j-1, dir, c)
 	} else if pairs[i] < 0 {
-		c.Set(x-minorx, y-minory, seq.Bases[i].ToCode())
+		c.Set(x-minorx, y-minory, seq.Bases[i].CodeAndSafety(safety[i]))
 		c.Set(x+minorx, y+minory, "-")
-		recursiveFolding(seq, pairs, x+majorx, y+majory, i+1, j, dir, c)
+		recursiveFolding(seq, pairs, safety, x+majorx, y+majory, i+1, j, dir, c)
 	} else {
 		c.Set(x-minorx, y-minory, "-")
-		c.Set(x+minorx, y+minory, seq.Bases[j].ToCode())
-		recursiveFolding(seq, pairs, x+majorx, y+majory, i, j-1, dir, c)
+		c.Set(x+minorx, y+minory, seq.Bases[j].CodeAndSafety(safety[j]))
+		recursiveFolding(seq, pairs, safety, x+majorx, y+majory, i, j-1, dir, c)
 	}
 }
 

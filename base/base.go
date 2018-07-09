@@ -1,5 +1,7 @@
 package base
 
+import "strings"
+
 type Base int
 
 const (
@@ -64,6 +66,14 @@ func (b Base) ToCode() string {
 		return "N"
 	}
 	return "."
+}
+
+func (b Base) CodeAndSafety(safe bool) string {
+	c := b.ToCode()
+	if !safe {
+		return strings.ToLower(c)
+	}
+	return c
 }
 
 func (b Base) CanPair(o Base) bool {
