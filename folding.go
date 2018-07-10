@@ -122,7 +122,14 @@ func main() {
 	}
 	sc.FillArray()
 
+	sc.CountSolutions()
+	fmt.Println(format.Matrix(sc.Sol))
+
 	scFoldings := sc.BacktrackAll()
+	if numSol := scFoldings.CountSolutions(); sc.Sol[0][len(sc.Sol)-1] != numSol {
+		log.Printf("Sanity check failed! Solution count matrix shows %d solutions, folding tree %d solutions", sc.Sol[0][len(sc.Sol)-1], numSol)
+	}
+
 	//fmt.Print("Matrix v:\n", format.Matrix(v), "\n")
 	//fmt.Print("Matrix w:\n", format.Matrix(w), "\n")
 	fmt.Printf("Found %d solutions in total\n", scFoldings.CountSolutions())
@@ -149,7 +156,16 @@ func main() {
 		log.Print("Sanity check failed! Wuchty method and safe & complete method produced different foldings")
 	}
 	fmt.Println(scFoldings)
-	fmt.Printf(format.FoldingWithSafety(seq, scPairArrays[0], safecomplete.TrivialSafety(scPairArrays)))
+	safety := safecomplete.TrivialSafety(scPairArrays)
+	fmt.Printf(format.FoldingWithSafety(seq, scPairArrays[0], safety))
+	numSafe := 0
+	for _, s := range safety {
+		if s {
+			numSafe++
+		}
+	}
+	fmt.Printf("Safe bases %d/%d (%f %%)\n", numSafe, len(safety), float64(numSafe*100)/float64(len(safety)))
+
 	/*
 		for _, f := range scPairArrays {
 			fmt.Print("\n")

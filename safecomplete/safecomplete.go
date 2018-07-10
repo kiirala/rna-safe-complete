@@ -6,6 +6,7 @@ type Predictor struct {
 	Seq *base.Sequence
 	V   [][]int
 	W   [][]int
+	Sol [][]int
 
 	MinHairpin int
 }
