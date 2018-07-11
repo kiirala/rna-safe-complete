@@ -18,7 +18,8 @@ func (p *Predictor) CountSolutions() {
 			if p.V[i][j] == p.V[i][j-1] {
 				numFound += p.Sol[i][j-1]
 			}
-			if p.W[i][j] == p.V[i+1][j-1]+1 {
+			// Have to check CanPair here: p.W[i][j] might be less than p.V[i][j]
+			if p.Seq.CanPair(i, j, p.MinHairpin) && p.V[i][j] == p.V[i+1][j-1]+1 {
 				numFound += p.Sol[i+1][j-1]
 			}
 			for k := i; k < j; k++ {
