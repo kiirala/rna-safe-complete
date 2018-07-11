@@ -243,7 +243,6 @@ func foldingStats(seqs map[string]*base.Sequence) {
 		for _, f := range wuFoldings {
 			if sanity := singleFoldingSanity(seq, f, flen); len(sanity) > 0 {
 				log.Print("Sanity check failed!\n", sanity, "\n")
-				//log.Println(f)
 			}
 		}
 
@@ -271,8 +270,6 @@ func foldingStats(seqs map[string]*base.Sequence) {
 		for _, f := range scPairArrays {
 			if sanity := singleFoldingSanity(seq, f, flen); len(sanity) > 0 {
 				log.Print("Sanity check failed!\n", sanity, "\n")
-				//log.Println(f)
-				//log.Print(format.Folding(seq, f))
 			}
 		}
 		if !foldingSetsEqual(wuFoldings, scPairArrays) {
@@ -285,7 +282,6 @@ func foldingStats(seqs map[string]*base.Sequence) {
 				numSafe++
 			}
 		}
-		//fmt.Printf("Safe bases %d/%d (%f %%)\n", numSafe, len(safety), float64(numSafe*100)/float64(len(safety)))
 		fmt.Printf("%s %8d %12d %8d %6d %12d\n",
 			name, len(seq.Bases), flen, len(zukerOptimals), len(wuFoldings), numSafe)
 	}
@@ -396,11 +392,13 @@ func foldingSetsEqual(a [][]int, b [][]int) bool {
 
 func allFoldingsSanity(seq *base.Sequence, foldings [][]int) string {
 	var errs []string
-	for i := 0; i < len(foldings); i++ {
-		for j := i + 1; j < len(foldings); j++ {
-			if reflect.DeepEqual(foldings[i], foldings[j]) {
-				errs = append(errs, fmt.Sprintf("Foldings %d and %d are exactly the same", i, j))
-			}
+	ff := make([][]int, len(foldings))
+	copy(ff, foldings)
+	sort.Sort(FoldingOrdering{ff})
+	for i := 0; i < len(foldings)-1; i++ {
+		if foldingArraysEqual(foldings[i], foldings[i+1]) {
+			errs = append(errs, fmt.Sprintf("At least two foldings are exactly the same"))
+			break
 		}
 	}
 	return strings.Join(errs, "\n")
