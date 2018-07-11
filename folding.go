@@ -20,6 +20,7 @@ var (
 	infile     = flag.String("in", "", "Name of input file in FASTA format")
 	dbfile     = flag.String("db", "", "Location of tRNA database file")
 	trna       = flag.String("trna", "", "Name of tRNA sequence within database file")
+	all        = flag.Bool("all", false, "Analyze all sequences in tRNA database")
 	minhairpin = flag.Int("minhairpin", 3, "Minimum number of free bases in hairpin loop")
 )
 
@@ -35,31 +36,50 @@ func readFasta() *base.Sequence {
 	return seq
 }
 
-func readTRNA() *base.Sequence {
+func readTRNA() map[string]*base.Sequence {
 	f, err := os.Open(*dbfile)
 	if err != nil {
 		log.Fatalf("Unable to open tRNA database \"%s\": %v", *dbfile, err)
 	}
-	seq, err := trnadb.ReadSequence(f, *trna)
+	seqs, err := trnadb.ReadSequences(f)
 	if err != nil {
 		log.Fatalf("Error reading tRNA database file \"%s\": %v", *dbfile, err)
 	}
-	return seq
+	return seqs
 }
 
 func main() {
 	flag.Parse()
 
 	var seq *base.Sequence
+	var seqs map[string]*base.Sequence
 	if *infile == "" && *dbfile == "" {
-		log.Fatal("Please specify either -in parameter or -db and -trna parameters")
+		log.Fatal("Please specify either -in parameter or -db parameters")
 	} else if *infile != "" && *dbfile != "" {
 		log.Fatal("Specify either -in or -db parameter, not both")
 	} else if *infile != "" {
 		seq = readFasta()
 	} else {
-		seq = readTRNA()
+		seqs = readTRNA()
+		if *trna != "" {
+			s, ok := seqs[*trna]
+			if !ok {
+				log.Fatalf("tRNA sequence \"%s\" not found in %s", *trna, *dbfile)
+			}
+			seq = s
+		} else if !*all {
+			log.Fatal("Specify either a tRNA sequence with -trna flag or all sequences with -all flag")
+		}
 	}
+
+	if *dbfile != "" && *all {
+		foldingStats(seqs)
+	} else {
+		singleFolding(seq)
+	}
+}
+
+func singleFolding(seq *base.Sequence) {
 	fmt.Printf("Sequence \"%s\"\n", seq.Comment)
 	fmt.Printf("Contains %d bases\n\n", len(seq.Bases))
 	fmt.Printf("Folding rules:\n  * hairpin loop must contain at least %d free bases\n\n", *minhairpin)
@@ -123,7 +143,7 @@ func main() {
 	sc.FillArray()
 
 	sc.CountSolutions()
-	fmt.Println(format.Matrix(sc.Sol))
+	//fmt.Println(format.Matrix(sc.Sol))
 
 	scFoldings := sc.BacktrackAll()
 	if numSol := scFoldings.CountSolutions(); sc.Sol[0][len(sc.Sol)-1] != numSol {
@@ -176,6 +196,99 @@ func main() {
 			fmt.Print(format.Folding(seq, f))
 		}
 	*/
+}
+
+func foldingStats(seqs map[string]*base.Sequence) {
+	fmt.Println("# Name NumBases FoldingPairs NumZuker NumAll NumSafeBases")
+
+	for name := range seqs {
+		seq := seqs[name]
+
+		nu := &nussinov.Predictor{
+			Seq:        seq,
+			MinHairpin: *minhairpin,
+		}
+		nu.FillArray()
+		nu.FillComplementary()
+		flen, folding := nu.Backtrack()
+		if fPairs := countPairs(folding); fPairs != flen {
+			log.Printf("Sanity check failed!\nOptimal folding has %d pairs, expected %d\n", fPairs, flen)
+		}
+		zukerOptimals := [][]int{folding}
+		for i := 0; i < len(seq.Bases); i++ {
+			for j := i + 1; j < len(seq.Bases); j++ {
+				solen, sopairs := nu.JoinedBacktrack(i, j)
+				if solen == flen && !foldingInArray(sopairs, zukerOptimals) {
+					zukerOptimals = append(zukerOptimals, sopairs)
+				}
+			}
+		}
+
+		wu := &wuchty.Predictor{
+			Seq:        seq,
+			MinHairpin: *minhairpin,
+			MaxStack:   10000,
+		}
+		wu.FillArray()
+		if !reflect.DeepEqual(nu.V, wu.V) {
+			log.Printf("Sanity check failed! Nussinov folding and Wuchty folding produced different DP arrays!\n")
+		}
+		wuFoldings := wu.BacktrackAll()
+		if !isSubsetOf(zukerOptimals, wuFoldings) {
+			log.Printf("Sanity check failed! Zuker method found solutions that Wuchty method didn't\n")
+		}
+		if sanity := allFoldingsSanity(seq, wuFoldings); sanity != "" {
+			log.Print("Sanity check failed!\n", sanity, "\n")
+		}
+		for _, f := range wuFoldings {
+			if sanity := singleFoldingSanity(seq, f, flen); len(sanity) > 0 {
+				log.Print("Sanity check failed!\n", sanity, "\n")
+				//log.Println(f)
+			}
+		}
+
+		sc := &safecomplete.Predictor{
+			Seq:        seq,
+			V:          nu.V,
+			MinHairpin: *minhairpin,
+		}
+		sc.FillArray()
+
+		sc.CountSolutions()
+
+		scFoldings := sc.BacktrackAll()
+		scFoldings.CollapseTree()
+		scFoldings.LiftCommon()
+
+		if numSol := scFoldings.CountSolutions(); sc.Sol[0][len(sc.Sol)-1] != numSol {
+			log.Printf("Sanity check failed! Solution count matrix shows %d solutions, folding tree %d solutions", sc.Sol[0][len(sc.Sol)-1], numSol)
+		}
+
+		scPairArrays := scFoldings.GeneratePairArrays(seq)
+		if sanity := allFoldingsSanity(seq, scPairArrays); sanity != "" {
+			log.Print("Sanity check failed!\n", sanity, "\n")
+		}
+		for _, f := range scPairArrays {
+			if sanity := singleFoldingSanity(seq, f, flen); len(sanity) > 0 {
+				log.Print("Sanity check failed!\n", sanity, "\n")
+				//log.Println(f)
+				//log.Print(format.Folding(seq, f))
+			}
+		}
+		if !foldingSetsEqual(wuFoldings, scPairArrays) {
+			log.Print("Sanity check failed! Wuchty method and safe & complete method produced different foldings")
+		}
+		safety := safecomplete.TrivialSafety(scPairArrays)
+		numSafe := 0
+		for _, s := range safety {
+			if s {
+				numSafe++
+			}
+		}
+		//fmt.Printf("Safe bases %d/%d (%f %%)\n", numSafe, len(safety), float64(numSafe*100)/float64(len(safety)))
+		fmt.Printf("%s %8d %12d %8d %6d %12d\n",
+			name, len(seq.Bases), flen, len(zukerOptimals), len(wuFoldings), numSafe)
+	}
 }
 
 func singleFoldingSanity(seq *base.Sequence, f []int, numPairs int) string {

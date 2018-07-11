@@ -6,9 +6,7 @@
 package trnadb
 
 import "bufio"
-import "fmt"
 import "io"
-import "errors"
 import "strings"
 import "unicode"
 
@@ -55,23 +53,27 @@ func parseLine(s string) (string, []base.Base) {
 	return comment, bases
 }
 
-func ReadSequence(r io.Reader, name string) (*base.Sequence, error) {
+func ReadSequences(r io.Reader) (map[string]*base.Sequence, error) {
 	br := bufio.NewReader(r)
+	seqs := map[string]*base.Sequence{}
 	for {
 		c, err := br.ReadString('\n')
 		if err != nil && err != io.EOF {
 			return nil, err
 		}
-		if strings.HasPrefix(c, name+" ") {
+
+		// All RNA sequences in the DB file start with an 'R'
+		if len(c) > 0 && c[0] == 'R' {
 			comment, bases := parseLine(c)
-			return &base.Sequence{
+			name := strings.SplitN(comment, " ", 2)[0]
+			seqs[name] = &base.Sequence{
 				Comment: comment,
 				Bases:   bases,
-			}, nil
+			}
 		}
 		if err == io.EOF {
 			break
 		}
 	}
-	return nil, errors.New(fmt.Sprintf("trnadb.ReadSequence: sequence \"%s\" not found in database", name))
+	return seqs, nil
 }
