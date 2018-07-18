@@ -6,6 +6,7 @@ import "log"
 import "os"
 import "sort"
 import "time"
+import "reflect"
 
 import "keltainen.duckdns.org/rnafolding/base"
 import "keltainen.duckdns.org/rnafolding/fasta"
@@ -113,6 +114,10 @@ func singleFolding(seq *base.Sequence) {
 
 	fmt.Println(scFoldings)
 	safety := safecomplete.TrivialSafety(scPairArrays)
+	newSafety := sc.SafetyFromBacktrack()
+	if !reflect.DeepEqual(safety, newSafety) {
+		log.Print("Sanity check failed! TrivialSafety and SafetyFromBacktrack return different values!")
+	}
 	fmt.Printf(format.FoldingWithSafety(seq, scPairArrays[0], safety))
 	numSafe := 0
 	for _, s := range safety {
@@ -124,7 +129,7 @@ func singleFolding(seq *base.Sequence) {
 }
 
 func foldingStats(seqs map[string]*base.Sequence) {
-	fmt.Println("# Name NumBases FoldingPairs NumZuker NumAll NumSafeBases TimeNussinov TimeWuchty TimeSafeComplete")
+	fmt.Println("# Name NumBases FoldingPairs NumZuker  NumAll NumSafeBases TimeNussinov TimeWuchty TimeSafeComplete")
 
 	for name := range seqs {
 		seq := seqs[name]
@@ -148,13 +153,17 @@ func foldingStats(seqs map[string]*base.Sequence) {
 		sanitySafeComplete(sc, scFoldings, flen, scPairArrays, wuFoldings)
 
 		safety := safecomplete.TrivialSafety(scPairArrays)
+		newSafety := sc.SafetyFromBacktrack()
+		if !reflect.DeepEqual(safety, newSafety) {
+			log.Print("Sanity check failed! TrivialSafety and SafetyFromBacktrack return different values!")
+		}
 		numSafe := 0
 		for _, s := range safety {
 			if s {
 				numSafe++
 			}
 		}
-		fmt.Printf("%s %8d %12d %8d %6d %12d %12.6f %10.6f %16.6f\n",
+		fmt.Printf("%s %8d %12d %8d %76d %12d %12.6f %10.6f %16.6f\n",
 			name, len(seq.Bases), flen, len(zukerOptimals), len(wuFoldings), numSafe,
 			nuTime.Seconds(), wuTime.Seconds(), scTime.Seconds())
 	}
