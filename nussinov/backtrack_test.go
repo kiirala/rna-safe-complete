@@ -4,13 +4,14 @@ import "testing"
 import "reflect"
 
 import "keltainen.duckdns.org/rnafolding/base"
+import "keltainen.duckdns.org/rnafolding/types"
 
 func TestBacktrack(t *testing.T) {
 	tests := []struct {
 		sequence      *base.Sequence
 		array         [][]int
 		expectedCount int
-		expectedPairs []int
+		expectedPairs types.FoldingPairs
 	}{
 		{
 			base.SequenceFromString("CG"),
@@ -19,7 +20,7 @@ func TestBacktrack(t *testing.T) {
 				{0, 0},
 			},
 			1,
-			[]int{1, 0},
+			types.FoldingPairs{1, 0},
 		},
 		{
 			base.SequenceFromString("AC"),
@@ -28,7 +29,7 @@ func TestBacktrack(t *testing.T) {
 				{0, 0},
 			},
 			0,
-			[]int{-1, -1},
+			types.FoldingPairs{-1, -1},
 		},
 		{
 			base.SequenceFromString("GGGAAAUCC"),
@@ -44,7 +45,7 @@ func TestBacktrack(t *testing.T) {
 				{0, 0, 0, 0, 0, 0, 0, 0, 0},
 			},
 			3,
-			[]int{8, 7, 6, -1, -1, -1, 2, 1, 0},
+			types.FoldingPairs{8, 7, 6, -1, -1, -1, 2, 1, 0},
 		},
 	}
 
@@ -85,11 +86,11 @@ func TestJoinedBacktrack(t *testing.T) {
 	tests := []struct {
 		i        int
 		j        int
-		expected []int
+		expected types.FoldingPairs
 	}{
-		{0, 8, []int{8, 7, 6, -1, -1, -1, 2, 1, 0}},
-		{1, 8, []int{-1, 8, 7, 6, -1, -1, 3, 2, 1}},
-		{4, 6, []int{8, 7, -1, -1, 6, -1, 4, 1, 0}},
+		{0, 8, types.FoldingPairs{8, 7, 6, -1, -1, -1, 2, 1, 0}},
+		{1, 8, types.FoldingPairs{-1, 8, 7, 6, -1, -1, 3, 2, 1}},
+		{4, 6, types.FoldingPairs{8, 7, -1, -1, 6, -1, 4, 1, 0}},
 	}
 	for _, tt := range tests {
 		p := &Predictor{Seq: seq, V: arr, W: cmpl}

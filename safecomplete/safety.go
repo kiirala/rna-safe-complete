@@ -2,7 +2,9 @@ package safecomplete
 
 import "log"
 
-func TrivialSafety(foldings [][]int) []bool {
+import "keltainen.duckdns.org/rnafolding/types"
+
+func TrivialSafety(foldings types.FoldingSet) []bool {
 	out := make([]bool, len(foldings[0]))
 	for i := 0; i < len(out); i++ {
 		out[i] = true

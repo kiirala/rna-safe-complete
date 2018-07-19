@@ -22,7 +22,7 @@ func branchless(f *FoldTree) bool {
 	return f.JoinPrefix == nil && len(f.Branches) == 0
 }
 
-func liftBranches(p *FoldTree, c *Folding) {
+func liftBranches(p *FoldTree, c *FoldTree) {
 	p.Branches = c.Branches
 	p.JoinPrefix = c.JoinPrefix
 	p.JoinSuffix = c.JoinSuffix
@@ -177,7 +177,7 @@ func (f *FoldTree) LiftCommon() {
 	}
 }
 
-func joinArrays(a, b []int) []int {
+func joinArrays(a, b FoldingPairs) []int {
 	ret := make([]int, len(a))
 	copy(ret, a)
 	for i, x := range b {
@@ -188,8 +188,8 @@ func joinArrays(a, b []int) []int {
 	return ret
 }
 
-func (f *FoldTree) GeneratePairArrays(seq *base.Sequence) [][]int {
-	var pp [][]int
+func (f *FoldTree) GeneratePairArrays(seq *base.Sequence) FoldingSet {
+	var pp FoldingSet
 	for _, b := range f.Branches {
 		pp = append(pp, b.GeneratePairArrays(seq)...)
 	}
@@ -203,8 +203,8 @@ func (f *FoldTree) GeneratePairArrays(seq *base.Sequence) [][]int {
 		}
 	}
 	if len(pp) == 0 {
-		pp = make([][]int, 1)
-		pp[0] = make([]int, len(seq.Bases))
+		pp = make(FoldingSet, 1)
+		pp[0] = make(FoldingPairs, len(seq.Bases))
 		for i := 0; i < len(pp[0]); i++ {
 			pp[0][i] = -9
 		}

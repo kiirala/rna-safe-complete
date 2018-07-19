@@ -12,7 +12,7 @@ import "keltainen.duckdns.org/rnafolding/nussinov"
 import "keltainen.duckdns.org/rnafolding/wuchty"
 import "keltainen.duckdns.org/rnafolding/safecomplete"
 
-func runNussinovZuker(seq *base.Sequence) (*nussinov.Predictor, int, [][]int) {
+func runNussinovZuker(seq *base.Sequence) (*nussinov.Predictor, int, types.FoldingSet) {
 	nu := &nussinov.Predictor{
 		Seq:        seq,
 		MinHairpin: *minhairpin,
@@ -20,11 +20,11 @@ func runNussinovZuker(seq *base.Sequence) (*nussinov.Predictor, int, [][]int) {
 	nu.FillArray()
 	nu.FillComplementary()
 	flen, folding := nu.Backtrack()
-	zukerOptimals := [][]int{folding}
+	zukerOptimals := types.FoldingSet{folding}
 	for i := 0; i < len(seq.Bases); i++ {
 		for j := i + 1; j < len(seq.Bases); j++ {
 			solen, sopairs := nu.JoinedBacktrack(i, j)
-			if solen == flen && !foldingInArray(sopairs, zukerOptimals) {
+			if solen == flen && !types.FoldingInArray(sopairs, zukerOptimals) {
 				zukerOptimals = append(zukerOptimals, sopairs)
 			}
 		}
@@ -32,7 +32,7 @@ func runNussinovZuker(seq *base.Sequence) (*nussinov.Predictor, int, [][]int) {
 	return nu, flen, zukerOptimals
 }
 
-func sanityNussinovZuker(zukerOptimals [][]int, numOptimalPairs int) {
+func sanityNussinovZuker(zukerOptimals types.FoldingSet, numOptimalPairs int) {
 	for _, f := range zukerOptimals {
 		if fPairs := countPairs(f); fPairs != numOptimalPairs {
 			log.Printf("Sanity check failed! Optimal Zuker folding has %d pairs, expected %d\n", fPairs, numOptimalPairs)
@@ -40,7 +40,7 @@ func sanityNussinovZuker(zukerOptimals [][]int, numOptimalPairs int) {
 	}
 }
 
-func runWuchty(seq *base.Sequence) (*wuchty.Predictor, [][]int) {
+func runWuchty(seq *base.Sequence) (*wuchty.Predictor, types.FoldingSet) {
 	wu := &wuchty.Predictor{
 		Seq:        seq,
 		MinHairpin: *minhairpin,
@@ -51,11 +51,11 @@ func runWuchty(seq *base.Sequence) (*wuchty.Predictor, [][]int) {
 	return wu, wuFoldings
 }
 
-func sanityWuchty(nu *nussinov.Predictor, wu *wuchty.Predictor, numOptimalPairs int, zukerOptimals [][]int, wuFoldings [][]int) {
+func sanityWuchty(nu *nussinov.Predictor, wu *wuchty.Predictor, numOptimalPairs int, zukerOptimals types.FoldingSet, wuFoldings types.FoldingSet) {
 	if !reflect.DeepEqual(nu.V, wu.V) {
 		log.Printf("Sanity check failed! Nussinov folding and Wuchty folding produced different DP arrays!\n")
 	}
-	if !isSubsetOf(zukerOptimals, wuFoldings) {
+	if !types.IsSubsetOf(zukerOptimals, wuFoldings) {
 		log.Printf("Sanity check failed! Zuker method found solutions that Wuchty method didn't\n")
 	}
 	if sanity := allFoldingsSanity(nu.Seq, wuFoldings); sanity != "" {
@@ -82,7 +82,7 @@ func runSafeComplete(seq *base.Sequence, nu *nussinov.Predictor) (*safecomplete.
 	return sc, scFoldings
 }
 
-func sanitySafeComplete(sc *safecomplete.Predictor, scFoldings *types.FoldTree, numOptimalPairs int, scPairArrays [][]int, wuFoldings [][]int) {
+func sanitySafeComplete(sc *safecomplete.Predictor, scFoldings *types.FoldTree, numOptimalPairs int, scPairArrays types.FoldingSet, wuFoldings types.FoldingSet) {
 	if numSol := scFoldings.CountSolutions(); sc.Sol[0][len(sc.Sol)-1] != numSol {
 		log.Printf("Sanity check failed! Solution count matrix shows %d solutions, folding tree %d solutions", sc.Sol[0][len(sc.Sol)-1], numSol)
 	}
@@ -95,12 +95,12 @@ func sanitySafeComplete(sc *safecomplete.Predictor, scFoldings *types.FoldTree, 
 			log.Print("Sanity check failed!\n", sanity, "\n")
 		}
 	}
-	if !foldingSetsEqual(wuFoldings, scPairArrays) {
+	if !types.FoldingSetsEqual(wuFoldings, scPairArrays) {
 		log.Print("Sanity check failed! Wuchty method and safe & complete method produced different foldings")
 	}
 }
 
-func singleFoldingSanity(seq *base.Sequence, f []int, numPairs int) string {
+func singleFoldingSanity(seq *base.Sequence, f types.FoldingPairs, numPairs int) string {
 	var errs []string
 	for i, j := range f {
 		if j < 0 {
@@ -123,13 +123,13 @@ func singleFoldingSanity(seq *base.Sequence, f []int, numPairs int) string {
 	return strings.Join(errs, "\n")
 }
 
-func allFoldingsSanity(seq *base.Sequence, foldings [][]int) string {
+func allFoldingsSanity(seq *base.Sequence, foldings types.FoldingSet) string {
 	var errs []string
-	ff := make([][]int, len(foldings))
+	ff := make(types.FoldingSet, len(foldings))
 	copy(ff, foldings)
-	sort.Sort(FoldingOrdering{ff})
+	sort.Sort(types.FoldingOrdering{ff})
 	for i := 0; i < len(foldings)-1; i++ {
-		if foldingArraysEqual(foldings[i], foldings[i+1]) {
+		if types.FoldingArraysEqual(foldings[i], foldings[i+1]) {
 			errs = append(errs, fmt.Sprintf("At least two foldings are exactly the same"))
 			break
 		}
