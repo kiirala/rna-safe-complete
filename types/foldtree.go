@@ -10,25 +10,25 @@ type Pair struct {
 	J int
 }
 
-type Folding struct {
+type FoldTree struct {
 	Pairs      []Pair
 	Free       []int
-	JoinPrefix *Folding
-	JoinSuffix *Folding
-	Branches   []*Folding
+	JoinPrefix *FoldTree
+	JoinSuffix *FoldTree
+	Branches   []*FoldTree
 }
 
-func branchless(f *Folding) bool {
+func branchless(f *FoldTree) bool {
 	return f.JoinPrefix == nil && len(f.Branches) == 0
 }
 
-func liftBranches(p *Folding, c *Folding) {
+func liftBranches(p *FoldTree, c *Folding) {
 	p.Branches = c.Branches
 	p.JoinPrefix = c.JoinPrefix
 	p.JoinSuffix = c.JoinSuffix
 }
 
-func (f *Folding) CollapseTree() {
+func (f *FoldTree) CollapseTree() {
 	for _, b := range f.Branches {
 		b.CollapseTree()
 	}
@@ -58,7 +58,7 @@ func (f *Folding) CollapseTree() {
 	}
 }
 
-func (f *Folding) CountSolutions() int {
+func (f *FoldTree) CountSolutions() int {
 	if len(f.Branches) > 0 {
 		sum := 0
 		for _, b := range f.Branches {
@@ -152,7 +152,7 @@ func (set *FreeSet) removedFrom(pp []int) []int {
 	return ret
 }
 
-func (f *Folding) LiftCommon() {
+func (f *FoldTree) LiftCommon() {
 	for _, b := range f.Branches {
 		b.LiftCommon()
 	}
@@ -188,7 +188,7 @@ func joinArrays(a, b []int) []int {
 	return ret
 }
 
-func (f *Folding) GeneratePairArrays(seq *base.Sequence) [][]int {
+func (f *FoldTree) GeneratePairArrays(seq *base.Sequence) [][]int {
 	var pp [][]int
 	for _, b := range f.Branches {
 		pp = append(pp, b.GeneratePairArrays(seq)...)
@@ -221,11 +221,11 @@ func (f *Folding) GeneratePairArrays(seq *base.Sequence) [][]int {
 	return pp
 }
 
-func (f *Folding) String() string {
+func (f *FoldTree) String() string {
 	return recursiveSCFolding(f, 0)
 }
 
-func recursiveSCFolding(f *Folding, depth int) string {
+func recursiveSCFolding(f *FoldTree, depth int) string {
 	out := ""
 	indent := ""
 	for i := 0; i < depth; i++ {

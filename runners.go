@@ -68,7 +68,7 @@ func sanityWuchty(nu *nussinov.Predictor, wu *wuchty.Predictor, numOptimalPairs 
 	}
 }
 
-func runSafeComplete(seq *base.Sequence, nu *nussinov.Predictor) (*safecomplete.Predictor, *types.Folding) {
+func runSafeComplete(seq *base.Sequence, nu *nussinov.Predictor) (*safecomplete.Predictor, *types.FoldTree) {
 	sc := &safecomplete.Predictor{
 		Seq:        seq,
 		V:          nu.V,
@@ -82,7 +82,7 @@ func runSafeComplete(seq *base.Sequence, nu *nussinov.Predictor) (*safecomplete.
 	return sc, scFoldings
 }
 
-func sanitySafeComplete(sc *safecomplete.Predictor, scFoldings *types.Folding, numOptimalPairs int, scPairArrays [][]int, wuFoldings [][]int) {
+func sanitySafeComplete(sc *safecomplete.Predictor, scFoldings *types.FoldTree, numOptimalPairs int, scPairArrays [][]int, wuFoldings [][]int) {
 	if numSol := scFoldings.CountSolutions(); sc.Sol[0][len(sc.Sol)-1] != numSol {
 		log.Printf("Sanity check failed! Solution count matrix shows %d solutions, folding tree %d solutions", sc.Sol[0][len(sc.Sol)-1], numSol)
 	}

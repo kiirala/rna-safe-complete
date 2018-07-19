@@ -4,33 +4,33 @@ import "testing"
 import "reflect"
 
 func TestCollapseTreeAlternatives(t *testing.T) {
-	f := &Folding{
+	f := &FoldTree{
 		Pairs: []Pair{Pair{I: 0, J: 13}},
-		JoinPrefix: &Folding{
+		JoinPrefix: &FoldTree{
 			Pairs: []Pair{Pair{I: 1, J: 2}},
 		},
-		JoinSuffix: &Folding{
-			JoinPrefix: &Folding{
+		JoinSuffix: &FoldTree{
+			JoinPrefix: &FoldTree{
 				Pairs: []Pair{Pair{I: 3, J: 7}},
-				Branches: []*Folding{
-					&Folding{
+				Branches: []*FoldTree{
+					&FoldTree{
 						Free:  []int{4},
 						Pairs: []Pair{Pair{I: 5, J: 6}},
 					},
-					&Folding{
+					&FoldTree{
 						Free:  []int{6},
 						Pairs: []Pair{Pair{I: 4, J: 5}},
 					},
 				},
 			},
-			JoinSuffix: &Folding{
+			JoinSuffix: &FoldTree{
 				Pairs: []Pair{Pair{I: 8, J: 12}},
-				Branches: []*Folding{
-					&Folding{
+				Branches: []*FoldTree{
+					&FoldTree{
 						Free:  []int{9},
 						Pairs: []Pair{Pair{I: 10, J: 11}},
 					},
-					&Folding{
+					&FoldTree{
 						Free:  []int{11},
 						Pairs: []Pair{Pair{I: 9, J: 10}},
 					},
@@ -39,27 +39,27 @@ func TestCollapseTreeAlternatives(t *testing.T) {
 		},
 	}
 
-	expected := &Folding{
+	expected := &FoldTree{
 		Pairs: []Pair{Pair{I: 0, J: 13}, Pair{I: 1, J: 2}, Pair{I: 3, J: 7}, Pair{I: 8, J: 12}},
-		JoinPrefix: &Folding{
-			Branches: []*Folding{
-				&Folding{
+		JoinPrefix: &FoldTree{
+			Branches: []*FoldTree{
+				&FoldTree{
 					Free:  []int{4},
 					Pairs: []Pair{Pair{I: 5, J: 6}},
 				},
-				&Folding{
+				&FoldTree{
 					Free:  []int{6},
 					Pairs: []Pair{Pair{I: 4, J: 5}},
 				},
 			},
 		},
-		JoinSuffix: &Folding{
-			Branches: []*Folding{
-				&Folding{
+		JoinSuffix: &FoldTree{
+			Branches: []*FoldTree{
+				&FoldTree{
 					Free:  []int{9},
 					Pairs: []Pair{Pair{I: 10, J: 11}},
 				},
-				&Folding{
+				&FoldTree{
 					Free:  []int{11},
 					Pairs: []Pair{Pair{I: 9, J: 10}},
 				},
