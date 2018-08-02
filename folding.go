@@ -30,11 +30,13 @@ type Rules struct {
 }
 
 type Timing struct {
-	ZukerSeconds             float64
-	WuchtySeconds            float64
-	SafeCompleteSeconds      float64
-	PairArraysSeconds        float64
-	SafeCompleteTotalSeconds float64
+	ZukerSeconds              float64
+	WuchtySeconds             float64
+	SafeCompleteSeconds       float64
+	PairArraysSeconds         float64
+	SafeCompleteTotalSeconds  float64
+	TrivialSafetySeconds      float64
+	SafeCompleteSafetySeconds float64
 }
 
 type Counts struct {
@@ -193,8 +195,13 @@ func foldSequence(seq *base.Sequence) OutputEntry {
 	paTime := time.Since(paStart)
 	scTotalTime := time.Since(scStart)
 
+	trsaStart := time.Now()
 	safety := safecomplete.TrivialSafety(scPairArrays)
+	trsaTime := time.Since(trsaStart)
+	newsaStart := time.Now()
 	newSafety := sc.SafetyFromBacktrack()
+	newsaTime := time.Since(newsaStart)
+
 	var safetySanity string
 	if !reflect.DeepEqual(safety, newSafety) {
 		safetySanity = "Sanity check failed! TrivialSafety and SafetyFromBacktrack return different values!"
@@ -215,11 +222,13 @@ func foldSequence(seq *base.Sequence) OutputEntry {
 			MinHairpin: *minhairpin,
 		},
 		Timing: Timing{
-			ZukerSeconds:             nuTime.Seconds(),
-			WuchtySeconds:            wuTime.Seconds(),
-			SafeCompleteSeconds:      scTime.Seconds(),
-			PairArraysSeconds:        paTime.Seconds(),
-			SafeCompleteTotalSeconds: scTotalTime.Seconds(),
+			ZukerSeconds:              nuTime.Seconds(),
+			WuchtySeconds:             wuTime.Seconds(),
+			SafeCompleteSeconds:       scTime.Seconds(),
+			PairArraysSeconds:         paTime.Seconds(),
+			SafeCompleteTotalSeconds:  scTotalTime.Seconds(),
+			TrivialSafetySeconds:      trsaTime.Seconds(),
+			SafeCompleteSafetySeconds: newsaTime.Seconds(),
 		},
 		Counts: Counts{
 			SequenceBases:          len(seq.Bases),
@@ -284,7 +293,7 @@ func singleFolding(seq *base.Sequence) OutputEntry {
 }
 
 func foldingStats(seqs map[string]*base.Sequence, out chan OutputEntry) {
-	fmt.Println("# Name NumBases FoldingPairs NumZuker  NumAll NumSafeBases TimeNussinov TimeWuchty TimeSafeComplete TimePairArrays")
+	fmt.Println("# Name NumBases FoldingPairs NumZuker  NumAll NumSafeBases TimeNussinov TimeWuchty TimeSafeComplete TimePairArrays TimeTrivSafety TimeSCSafety")
 
 	for name := range seqs {
 		seq := seqs[name]
@@ -304,10 +313,11 @@ func foldingStats(seqs map[string]*base.Sequence, out chan OutputEntry) {
 		}
 
 		out <- o
-		fmt.Printf("%s %8d %12d %8d %7d %12d %12.6f %10.6f %16.6f %12.6f\n",
+		fmt.Printf("%s %8d %12d %8d %7d %12d %12.6f %10.6f %16.6f %14.6f %14.6f %12.6f\n",
 			o.Name, o.Counts.SequenceBases, o.Counts.OptimalPairs,
 			o.Counts.ZukerFoldings, o.Counts.WuchtyFoldings, o.Counts.SafeBases,
-			o.Timing.ZukerSeconds, o.Timing.WuchtySeconds, o.Timing.SafeCompleteSeconds, o.Timing.PairArraysSeconds)
+			o.Timing.ZukerSeconds, o.Timing.WuchtySeconds, o.Timing.SafeCompleteSeconds, o.Timing.PairArraysSeconds,
+			o.Timing.TrivialSafetySeconds, o.Timing.SafeCompleteSafetySeconds)
 	}
 	close(out)
 }
