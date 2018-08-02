@@ -126,7 +126,7 @@ func main() {
 		}
 	}
 
-	out := make(chan OutputEntry)
+	out := make(chan OutputEntry, 1)
 	if *dbfile != "" && *all {
 		go foldingStats(seqs, out)
 	} else {
@@ -180,7 +180,7 @@ func foldSequence(seq *base.Sequence) OutputEntry {
 	wuTime := time.Since(wuStart)
 
 	scStart := time.Now()
-	sc, scFoldings := runSafeComplete(seq, nu)
+	sc, scFoldings := runSafeComplete(seq)
 	scCountOriginal := scFoldings.CountSolutions()
 	scFoldings.CollapseTree()
 	scCountCollapsed := scFoldings.CountSolutions()

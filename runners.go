@@ -72,10 +72,9 @@ func sanityWuchty(nu *nussinov.Predictor, wu *wuchty.Predictor, numOptimalPairs 
 	return strings.Join(out, "\n")
 }
 
-func runSafeComplete(seq *base.Sequence, nu *nussinov.Predictor) (*safecomplete.Predictor, *types.FoldTree) {
+func runSafeComplete(seq *base.Sequence) (*safecomplete.Predictor, *types.FoldTree) {
 	sc := &safecomplete.Predictor{
 		Seq:        seq,
-		V:          nu.V,
 		MinHairpin: *minhairpin,
 	}
 	sc.FillArray()
