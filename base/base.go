@@ -14,6 +14,7 @@ const (
 )
 
 type Sequence struct {
+	Name    string
 	Comment string
 	Bases   []Base
 }
@@ -108,4 +109,20 @@ func SequenceFromString(s string) *Sequence {
 		bases[i] = FromCode(string(c))
 	}
 	return &Sequence{Bases: bases}
+}
+
+func (s Sequence) BasesString() string {
+	out := make([]string, len(s.Bases))
+	for i, b := range s.Bases {
+		out[i] = b.ToCode()
+	}
+	return strings.Join(out, "")
+}
+
+func (s Sequence) BasesSafetyString(safety []bool) string {
+	out := make([]string, len(s.Bases))
+	for i, b := range s.Bases {
+		out[i] = b.CodeAndSafety(safety[i])
+	}
+	return strings.Join(out, "")
 }

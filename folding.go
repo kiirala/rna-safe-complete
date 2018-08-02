@@ -1,15 +1,18 @@
 package main
 
+import "encoding/json"
 import "flag"
 import "fmt"
 import "log"
 import "os"
-import "time"
+import "path"
 import "reflect"
+import "time"
 
 import "keltainen.duckdns.org/rnafolding/base"
 import "keltainen.duckdns.org/rnafolding/fasta"
 import "keltainen.duckdns.org/rnafolding/trnadb"
+import "keltainen.duckdns.org/rnafolding/types"
 import "keltainen.duckdns.org/rnafolding/safecomplete"
 import "keltainen.duckdns.org/rnafolding/format"
 
@@ -19,7 +22,61 @@ var (
 	trna       = flag.String("trna", "", "Name of tRNA sequence within database file")
 	all        = flag.Bool("all", false, "Analyze all sequences in tRNA database")
 	minhairpin = flag.Int("minhairpin", 3, "Minimum number of free bases in hairpin loop")
+	outdir     = flag.String("outdir", "", "Write result files to given directory")
 )
+
+type Rules struct {
+	MinHairpin int
+}
+
+type Timing struct {
+	ZukerSeconds             float64
+	WuchtySeconds            float64
+	SafeCompleteSeconds      float64
+	PairArraysSeconds        float64
+	SafeCompleteTotalSeconds float64
+}
+
+type Counts struct {
+	SequenceBases          int
+	OptimalPairs           int
+	ZukerFoldings          int
+	WuchtyFoldings         int
+	SafeCompleteFoldings   int
+	AfterCollapseTree      int
+	AfterLiftCommon        int
+	SafeCompletePairArrays int
+	SafeBases              int
+}
+
+type Sanity struct {
+	Zuker        string
+	Wuchty       string
+	SafeComplete string
+	Safety       string
+}
+
+type Folding struct {
+	Pairing    types.FoldingPairs
+	PairCount  int
+	DotBracket string
+	AsciiArt   string
+}
+
+type OutputEntry struct {
+	Name                    string
+	Comment                 string
+	Sequence                string
+	SequenceWithSafety      string
+	Rules                   Rules
+	Timing                  Timing
+	Counts                  Counts
+	Sanity                  Sanity
+	ZukerFoldings           []Folding
+	AllFoldings             []Folding
+	SafeCompleteFoldingTree string
+	Safety                  []bool
+}
 
 func readFasta() *base.Sequence {
 	f, err := os.Open(*infile)
@@ -69,103 +126,190 @@ func main() {
 		}
 	}
 
+	var out []OutputEntry
 	if *dbfile != "" && *all {
-		foldingStats(seqs)
+		out = foldingStats(seqs)
 	} else {
-		singleFolding(seq)
+		o := singleFolding(seq)
+		out = []OutputEntry{o}
+	}
+
+	if *outdir != "" {
+		for _, o := range out {
+			fname := path.Join(*outdir, o.Name+".json")
+			f, err := os.Create(fname)
+			if err != nil {
+				log.Printf("Could not open %s for writing: %v", fname, err)
+				continue
+			}
+			defer f.Close()
+			b, err := json.MarshalIndent(o, "", "  ")
+			if err != nil {
+				log.Print("Count not encode JSON for %s: %v", o.Name, err)
+				continue
+			}
+			_, err = f.Write(b)
+			if err != nil {
+				log.Print("Failed to write to %s: %v", fname, err)
+			}
+		}
 	}
 }
 
-func singleFolding(seq *base.Sequence) {
-	fmt.Printf("Sequence \"%s\"\n", seq.Comment)
-	fmt.Printf("Contains %d bases\n\n", len(seq.Bases))
-	fmt.Printf("Folding rules:\n  * hairpin loop must contain at least %d free bases\n\n", *minhairpin)
+func foldingsToOutputFormat(seq *base.Sequence, ff types.FoldingSet, safety []bool) []Folding {
+	out := make([]Folding, len(ff))
+	for i, f := range ff {
+		out[i] = Folding{
+			Pairing:    f,
+			PairCount:  countPairs(f),
+			DotBracket: format.DotBracket(f),
+			AsciiArt:   format.FoldingWithSafety(seq, f, safety),
+		}
+	}
+	return out
+}
 
+func foldSequence(seq *base.Sequence) OutputEntry {
+	nuStart := time.Now()
 	nu, flen, zukerOptimals := runNussinovZuker(seq)
-	fmt.Printf("Optimal folding, %d pairs: %v\n", flen, zukerOptimals[0])
-	fmt.Printf("Zuker method found %d optimal solutions\n", len(zukerOptimals))
-	sanityNussinovZuker(zukerOptimals, flen)
-	//for _, f := range zukerOptimals {
-	//	fmt.Printf(format.Folding(seq, f))
-	//	fmt.Println()
-	//}
+	nuTime := time.Since(nuStart)
 
+	wuStart := time.Now()
 	wu, wuFoldings := runWuchty(seq)
-	fmt.Printf("Wuchty predictor produced %d foldings\n", len(wuFoldings))
-	sanityWuchty(nu, wu, flen, zukerOptimals, wuFoldings)
+	wuTime := time.Since(wuStart)
 
+	scStart := time.Now()
 	sc, scFoldings := runSafeComplete(seq, nu)
-	//fmt.Println(format.Matrix(sc.Sol))
-
-	//fmt.Print("Matrix v:\n", format.Matrix(v), "\n")
-	//fmt.Print("Matrix w:\n", format.Matrix(w), "\n")
-	fmt.Printf("Found %d solutions in total\n", scFoldings.CountSolutions())
-	//fmt.Println(scFoldings)
+	scCountOriginal := scFoldings.CountSolutions()
 	scFoldings.CollapseTree()
-	fmt.Printf("Found %d solutions after CollapseTree\n", scFoldings.CountSolutions())
-	//fmt.Println(scFoldings)
+	scCountCollapsed := scFoldings.CountSolutions()
 	scFoldings.LiftCommon()
-	fmt.Printf("Found %d solutions after LiftCommon\n", scFoldings.CountSolutions())
+	scCountLifted := scFoldings.CountSolutions()
+	scTime := time.Since(scStart)
 
+	paStart := time.Now()
 	scPairArrays := scFoldings.GeneratePairArrays(seq)
-	fmt.Printf("Folding tree -> folding arrays conversion produced %d foldings\n", len(scPairArrays))
-	sanitySafeComplete(sc, scFoldings, flen, scPairArrays, wuFoldings)
+	paTime := time.Since(paStart)
+	scTotalTime := time.Since(scStart)
 
-	fmt.Println(scFoldings)
 	safety := safecomplete.TrivialSafety(scPairArrays)
 	newSafety := sc.SafetyFromBacktrack()
+	var safetySanity string
 	if !reflect.DeepEqual(safety, newSafety) {
-		log.Print("Sanity check failed! TrivialSafety and SafetyFromBacktrack return different values!")
+		safetySanity = "Sanity check failed! TrivialSafety and SafetyFromBacktrack return different values!"
 	}
-	fmt.Printf(format.FoldingWithSafety(seq, scPairArrays[0], safety))
 	numSafe := 0
 	for _, s := range safety {
 		if s {
 			numSafe++
 		}
 	}
-	fmt.Printf("Safe bases %d/%d (%f %%)\n", numSafe, len(safety), float64(numSafe*100)/float64(len(safety)))
+
+	return OutputEntry{
+		Name:               seq.Name,
+		Comment:            seq.Comment,
+		Sequence:           seq.BasesString(),
+		SequenceWithSafety: seq.BasesSafetyString(safety),
+		Rules: Rules{
+			MinHairpin: *minhairpin,
+		},
+		Timing: Timing{
+			ZukerSeconds:             nuTime.Seconds(),
+			WuchtySeconds:            wuTime.Seconds(),
+			SafeCompleteSeconds:      scTime.Seconds(),
+			PairArraysSeconds:        paTime.Seconds(),
+			SafeCompleteTotalSeconds: scTotalTime.Seconds(),
+		},
+		Counts: Counts{
+			SequenceBases:          len(seq.Bases),
+			OptimalPairs:           flen,
+			ZukerFoldings:          len(zukerOptimals),
+			WuchtyFoldings:         len(wuFoldings),
+			SafeCompleteFoldings:   scCountOriginal,
+			AfterCollapseTree:      scCountCollapsed,
+			AfterLiftCommon:        scCountLifted,
+			SafeCompletePairArrays: len(scPairArrays),
+			SafeBases:              numSafe,
+		},
+		Sanity: Sanity{
+			Zuker:        sanityNussinovZuker(zukerOptimals, flen),
+			Wuchty:       sanityWuchty(nu, wu, flen, zukerOptimals, wuFoldings),
+			SafeComplete: sanitySafeComplete(sc, scFoldings, flen, scPairArrays, wuFoldings),
+			Safety:       safetySanity,
+		},
+		ZukerFoldings:           foldingsToOutputFormat(seq, zukerOptimals, safety),
+		AllFoldings:             foldingsToOutputFormat(seq, scPairArrays, safety),
+		SafeCompleteFoldingTree: scFoldings.String(),
+		Safety:                  safety,
+	}
 }
 
-func foldingStats(seqs map[string]*base.Sequence) {
-	fmt.Println("# Name NumBases FoldingPairs NumZuker  NumAll NumSafeBases TimeNussinov TimeWuchty TimeSafeComplete")
+func singleFolding(seq *base.Sequence) OutputEntry {
+	o := foldSequence(seq)
+
+	fmt.Printf("Sequence \"%s\"\n", o.Comment)
+	fmt.Printf("Contains %d bases\n\n", o.Counts.SequenceBases)
+	fmt.Printf("Folding rules:\n  * hairpin loop must contain at least %d free bases\n\n", o.Rules.MinHairpin)
+
+	fmt.Printf("Optimal folding, %d pairs: %v\n", o.Counts.OptimalPairs, o.ZukerFoldings[0].Pairing)
+	fmt.Printf("Zuker method found %d optimal solutions\n", o.Counts.ZukerFoldings)
+	if o.Sanity.Zuker != "" {
+		log.Print(o.Sanity.Zuker)
+	}
+
+	fmt.Printf("Wuchty predictor produced %d foldings\n", o.Counts.WuchtyFoldings)
+	if o.Sanity.Wuchty != "" {
+		log.Print(o.Sanity.Wuchty)
+	}
+
+	fmt.Printf("Found %d solutions in total\n", o.Counts.SafeCompleteFoldings)
+	fmt.Printf("Found %d solutions after CollapseTree\n", o.Counts.AfterCollapseTree)
+	fmt.Printf("Found %d solutions after LiftCommon\n", o.Counts.AfterLiftCommon)
+
+	fmt.Printf("Folding tree -> folding arrays conversion produced %d foldings\n", o.Counts.SafeCompletePairArrays)
+	if o.Sanity.SafeComplete != "" {
+		log.Print(o.Sanity.SafeComplete)
+	}
+
+	fmt.Println(o.SafeCompleteFoldingTree)
+	if o.Sanity.Safety != "" {
+		log.Print(o.Sanity.Safety)
+	}
+	fmt.Print(format.FoldingWithSafety(seq, o.AllFoldings[0].Pairing, o.Safety))
+	fmt.Printf("Safe bases %d/%d (%f %%)\n",
+		o.Counts.SafeBases, o.Counts.SequenceBases, float64(o.Counts.SafeBases*100)/float64(o.Counts.SequenceBases))
+
+	return o
+}
+
+func foldingStats(seqs map[string]*base.Sequence) []OutputEntry {
+	var out []OutputEntry
+	fmt.Println("# Name NumBases FoldingPairs NumZuker  NumAll NumSafeBases TimeNussinov TimeWuchty TimeSafeComplete TimePairArrays")
 
 	for name := range seqs {
 		seq := seqs[name]
+		o := foldSequence(seq)
 
-		nuStart := time.Now()
-		nu, flen, zukerOptimals := runNussinovZuker(seq)
-		nuTime := time.Since(nuStart)
-		sanityNussinovZuker(zukerOptimals, flen)
-
-		wuStart := time.Now()
-		wu, wuFoldings := runWuchty(seq)
-		wuTime := time.Since(wuStart)
-		sanityWuchty(nu, wu, flen, zukerOptimals, wuFoldings)
-
-		scStart := time.Now()
-		sc, scFoldings := runSafeComplete(seq, nu)
-		scFoldings.CollapseTree()
-		scFoldings.LiftCommon()
-		scPairArrays := scFoldings.GeneratePairArrays(seq)
-		scTime := time.Since(scStart)
-		sanitySafeComplete(sc, scFoldings, flen, scPairArrays, wuFoldings)
-
-		safety := safecomplete.TrivialSafety(scPairArrays)
-		newSafety := sc.SafetyFromBacktrack()
-		if !reflect.DeepEqual(safety, newSafety) {
-			log.Print("Sanity check failed! TrivialSafety and SafetyFromBacktrack return different values!")
+		if o.Sanity.Zuker != "" {
+			log.Print(o.Sanity.Zuker)
 		}
-		numSafe := 0
-		for _, s := range safety {
-			if s {
-				numSafe++
-			}
+		if o.Sanity.Wuchty != "" {
+			log.Print(o.Sanity.Wuchty)
 		}
-		fmt.Printf("%s %8d %12d %8d %7d %12d %12.6f %10.6f %16.6f\n",
-			name, len(seq.Bases), flen, len(zukerOptimals), len(wuFoldings), numSafe,
-			nuTime.Seconds(), wuTime.Seconds(), scTime.Seconds())
+		if o.Sanity.SafeComplete != "" {
+			log.Print(o.Sanity.SafeComplete)
+		}
+		if o.Sanity.Safety != "" {
+			log.Print(o.Sanity.Safety)
+		}
+
+		out = append(out, o)
+		fmt.Printf("%s %8d %12d %8d %7d %12d %12.6f %10.6f %16.6f %12.6f\n",
+			o.Name, o.Counts.SequenceBases, o.Counts.OptimalPairs,
+			o.Counts.ZukerFoldings, o.Counts.WuchtyFoldings, o.Counts.SafeBases,
+			o.Timing.ZukerSeconds, o.Timing.WuchtySeconds, o.Timing.SafeCompleteSeconds, o.Timing.PairArraysSeconds)
 	}
+	return out
 }
 
 func countPairs(f []int) int {

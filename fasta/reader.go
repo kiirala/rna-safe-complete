@@ -15,6 +15,7 @@ func ReadSequence(r io.Reader) (*base.Sequence, error) {
 	}
 	bases, err := readBases(br)
 	return &base.Sequence{
+		Name:    strings.SplitN(comment, " ", 2)[0],
 		Comment: comment,
 		Bases:   bases,
 	}, err

@@ -1,7 +1,6 @@
 package main
 
 import "fmt"
-import "log"
 import "reflect"
 import "sort"
 import "strings"
@@ -32,12 +31,15 @@ func runNussinovZuker(seq *base.Sequence) (*nussinov.Predictor, int, types.Foldi
 	return nu, flen, zukerOptimals
 }
 
-func sanityNussinovZuker(zukerOptimals types.FoldingSet, numOptimalPairs int) {
+func sanityNussinovZuker(zukerOptimals types.FoldingSet, numOptimalPairs int) string {
+	var out []string
 	for _, f := range zukerOptimals {
 		if fPairs := countPairs(f); fPairs != numOptimalPairs {
-			log.Printf("Sanity check failed! Optimal Zuker folding has %d pairs, expected %d\n", fPairs, numOptimalPairs)
+			out = append(out,
+				fmt.Sprintf("Sanity check failed! Optimal Zuker folding has %d pairs, expected %d", fPairs, numOptimalPairs))
 		}
 	}
+	return strings.Join(out, "\n")
 }
 
 func runWuchty(seq *base.Sequence) (*wuchty.Predictor, types.FoldingSet) {
@@ -51,21 +53,23 @@ func runWuchty(seq *base.Sequence) (*wuchty.Predictor, types.FoldingSet) {
 	return wu, wuFoldings
 }
 
-func sanityWuchty(nu *nussinov.Predictor, wu *wuchty.Predictor, numOptimalPairs int, zukerOptimals types.FoldingSet, wuFoldings types.FoldingSet) {
+func sanityWuchty(nu *nussinov.Predictor, wu *wuchty.Predictor, numOptimalPairs int, zukerOptimals types.FoldingSet, wuFoldings types.FoldingSet) string {
+	var out []string
 	if !reflect.DeepEqual(nu.V, wu.V) {
-		log.Printf("Sanity check failed! Nussinov folding and Wuchty folding produced different DP arrays!\n")
+		out = append(out, fmt.Sprintf("Sanity check failed! Nussinov folding and Wuchty folding produced different DP arrays!"))
 	}
 	if !types.IsSubsetOf(zukerOptimals, wuFoldings) {
-		log.Printf("Sanity check failed! Zuker method found solutions that Wuchty method didn't\n")
+		out = append(out, fmt.Sprintf("Sanity check failed! Zuker method found solutions that Wuchty method didn't"))
 	}
 	if sanity := allFoldingsSanity(nu.Seq, wuFoldings); sanity != "" {
-		log.Print("Sanity check failed!\n", sanity, "\n")
+		out = append(out, fmt.Sprint("Sanity check failed!\n", sanity))
 	}
 	for _, f := range wuFoldings {
 		if sanity := singleFoldingSanity(nu.Seq, f, numOptimalPairs); len(sanity) > 0 {
-			log.Print("Sanity check failed!\n", sanity, "\n")
+			out = append(out, fmt.Sprint("Sanity check failed!\n", sanity))
 		}
 	}
+	return strings.Join(out, "\n")
 }
 
 func runSafeComplete(seq *base.Sequence, nu *nussinov.Predictor) (*safecomplete.Predictor, *types.FoldTree) {
@@ -82,22 +86,24 @@ func runSafeComplete(seq *base.Sequence, nu *nussinov.Predictor) (*safecomplete.
 	return sc, scFoldings
 }
 
-func sanitySafeComplete(sc *safecomplete.Predictor, scFoldings *types.FoldTree, numOptimalPairs int, scPairArrays types.FoldingSet, wuFoldings types.FoldingSet) {
+func sanitySafeComplete(sc *safecomplete.Predictor, scFoldings *types.FoldTree, numOptimalPairs int, scPairArrays types.FoldingSet, wuFoldings types.FoldingSet) string {
+	var out []string
 	if numSol := scFoldings.CountSolutions(); sc.Sol[0][len(sc.Sol)-1] != numSol {
-		log.Printf("Sanity check failed! Solution count matrix shows %d solutions, folding tree %d solutions", sc.Sol[0][len(sc.Sol)-1], numSol)
+		out = append(out, fmt.Sprintf("Sanity check failed! Solution count matrix shows %d solutions, folding tree %d solutions", sc.Sol[0][len(sc.Sol)-1], numSol))
 	}
 
 	if sanity := allFoldingsSanity(sc.Seq, scPairArrays); sanity != "" {
-		log.Print("Sanity check failed!\n", sanity, "\n")
+		out = append(out, fmt.Sprint("Sanity check failed!\n", sanity, "\n"))
 	}
 	for _, f := range scPairArrays {
 		if sanity := singleFoldingSanity(sc.Seq, f, numOptimalPairs); len(sanity) > 0 {
-			log.Print("Sanity check failed!\n", sanity, "\n")
+			out = append(out, fmt.Sprint("Sanity check failed!\n", sanity, "\n"))
 		}
 	}
 	if !types.FoldingSetsEqual(wuFoldings, scPairArrays) {
-		log.Print("Sanity check failed! Wuchty method and safe & complete method produced different foldings")
+		out = append(out, fmt.Sprint("Sanity check failed! Wuchty method and safe & complete method produced different foldings"))
 	}
+	return strings.Join(out, "\n")
 }
 
 func singleFoldingSanity(seq *base.Sequence, f types.FoldingPairs, numPairs int) string {

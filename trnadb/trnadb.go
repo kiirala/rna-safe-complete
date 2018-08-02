@@ -67,6 +67,7 @@ func ReadSequences(r io.Reader) (map[string]*base.Sequence, error) {
 			comment, bases := parseLine(c)
 			name := strings.SplitN(comment, " ", 2)[0]
 			seqs[name] = &base.Sequence{
+				Name:    name,
 				Comment: comment,
 				Bases:   bases,
 			}

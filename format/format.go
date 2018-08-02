@@ -4,6 +4,7 @@ import "fmt"
 import "strings"
 
 import "keltainen.duckdns.org/rnafolding/base"
+import "keltainen.duckdns.org/rnafolding/types"
 
 func Matrix(m [][]int) string {
 	strs := make([]string, len(m))
@@ -17,7 +18,23 @@ type canvas struct {
 	c map[int]map[int]rune
 }
 
-func Folding(seq *base.Sequence, pairs []int) string {
+func DotBracket(pairs types.FoldingPairs) string {
+	out := make([]rune, len(pairs))
+	for i, p := range pairs {
+		if p < 0 {
+			out[i] = '.'
+		} else {
+			if p > i {
+				out[i] = '('
+			} else {
+				out[i] = ')'
+			}
+		}
+	}
+	return string(out)
+}
+
+func Folding(seq *base.Sequence, pairs types.FoldingPairs) string {
 	safety := make([]bool, len(pairs))
 	for i := 0; i < len(safety); i++ {
 		safety[i] = true
@@ -25,7 +42,7 @@ func Folding(seq *base.Sequence, pairs []int) string {
 	return FoldingWithSafety(seq, pairs, safety)
 }
 
-func FoldingWithSafety(seq *base.Sequence, pairs []int, safety []bool) string {
+func FoldingWithSafety(seq *base.Sequence, pairs types.FoldingPairs, safety []bool) string {
 	c := &canvas{c: map[int]map[int]rune{}}
 	c.Set(0, -1, ">")
 	c.Set(0, 1, "<")
