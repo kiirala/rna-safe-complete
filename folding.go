@@ -65,6 +65,12 @@ type Folding struct {
 	AsciiArt   string
 }
 
+type Safety struct {
+	SafeBase  []bool
+	PairCount [][]int
+	FreeCount []int
+}
+
 type OutputEntry struct {
 	Name                    string
 	Comment                 string
@@ -78,7 +84,7 @@ type OutputEntry struct {
 	ZukerFoldings           []Folding
 	AllFoldings             []Folding
 	SafeCompleteFoldingTree string
-	Safety                  []bool
+	Safety                  Safety
 }
 
 func readFasta() *base.Sequence {
@@ -147,7 +153,7 @@ func main() {
 				continue
 			}
 			defer f.Close()
-			b, err := json.MarshalIndent(o, "", "  ")
+			b, err := json.Marshal(o)
 			if err != nil {
 				log.Print("Count not encode JSON for %s: %v", o.Name, err)
 				continue
@@ -256,7 +262,11 @@ func foldSequence(seq *base.Sequence) OutputEntry {
 		ZukerFoldings:           foldingsToOutputFormat(seq, zukerOptimals, safety),
 		AllFoldings:             foldingsToOutputFormat(seq, scPairArrays, safety),
 		SafeCompleteFoldingTree: scFoldings.String(),
-		Safety:                  safety,
+		Safety: Safety{
+			SafeBase:  safety,
+			PairCount: sc.PairSafety,
+			FreeCount: sc.SingleSafety,
+		},
 	}
 }
 
@@ -293,10 +303,10 @@ func singleFolding(seq *base.Sequence) OutputEntry {
 	}
 	if o.ReferenceFolding.Pairing != nil {
 		fmt.Printf("Reference folding: (%d pairs)\n", o.ReferenceFolding.PairCount)
-		fmt.Print(format.FoldingWithSafety(seq, o.ReferenceFolding.Pairing, o.Safety))
+		fmt.Print(format.FoldingWithSafety(seq, o.ReferenceFolding.Pairing, o.Safety.SafeBase))
 	}
 	fmt.Println("Example folding with maximal pairing:")
-	fmt.Print(format.FoldingWithSafety(seq, o.AllFoldings[0].Pairing, o.Safety))
+	fmt.Print(format.FoldingWithSafety(seq, o.AllFoldings[0].Pairing, o.Safety.SafeBase))
 	fmt.Printf("Safe bases %d/%d (%f %%)\n",
 		o.Counts.SafeBases, o.Counts.SequenceBases, float64(o.Counts.SafeBases*100)/float64(o.Counts.SequenceBases))
 
