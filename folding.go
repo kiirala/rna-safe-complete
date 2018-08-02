@@ -126,16 +126,17 @@ func main() {
 		}
 	}
 
-	var out []OutputEntry
+	out := make(chan OutputEntry)
 	if *dbfile != "" && *all {
-		out = foldingStats(seqs)
+		go foldingStats(seqs, out)
 	} else {
 		o := singleFolding(seq)
-		out = []OutputEntry{o}
+		out <- o
+		close(out)
 	}
 
 	if *outdir != "" {
-		for _, o := range out {
+		for o := range out {
 			fname := path.Join(*outdir, o.Name+".json")
 			f, err := os.Create(fname)
 			if err != nil {
@@ -282,8 +283,7 @@ func singleFolding(seq *base.Sequence) OutputEntry {
 	return o
 }
 
-func foldingStats(seqs map[string]*base.Sequence) []OutputEntry {
-	var out []OutputEntry
+func foldingStats(seqs map[string]*base.Sequence, out chan OutputEntry) {
 	fmt.Println("# Name NumBases FoldingPairs NumZuker  NumAll NumSafeBases TimeNussinov TimeWuchty TimeSafeComplete TimePairArrays")
 
 	for name := range seqs {
@@ -303,13 +303,13 @@ func foldingStats(seqs map[string]*base.Sequence) []OutputEntry {
 			log.Print(o.Sanity.Safety)
 		}
 
-		out = append(out, o)
+		out <- o
 		fmt.Printf("%s %8d %12d %8d %7d %12d %12.6f %10.6f %16.6f %12.6f\n",
 			o.Name, o.Counts.SequenceBases, o.Counts.OptimalPairs,
 			o.Counts.ZukerFoldings, o.Counts.WuchtyFoldings, o.Counts.SafeBases,
 			o.Timing.ZukerSeconds, o.Timing.WuchtySeconds, o.Timing.SafeCompleteSeconds, o.Timing.PairArraysSeconds)
 	}
-	return out
+	close(out)
 }
 
 func countPairs(f []int) int {
