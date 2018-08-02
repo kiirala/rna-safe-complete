@@ -4,6 +4,7 @@ import "fmt"
 import "strings"
 
 import "keltainen.duckdns.org/rnafolding/base"
+import "keltainen.duckdns.org/rnafolding/folding"
 
 type Pair struct {
 	I int
@@ -177,7 +178,7 @@ func (f *FoldTree) LiftCommon() {
 	}
 }
 
-func joinArrays(a, b FoldingPairs) []int {
+func joinArrays(a, b folding.FoldingPairs) []int {
 	ret := make([]int, len(a))
 	copy(ret, a)
 	for i, x := range b {
@@ -188,8 +189,8 @@ func joinArrays(a, b FoldingPairs) []int {
 	return ret
 }
 
-func (f *FoldTree) GeneratePairArrays(seq *base.Sequence) FoldingSet {
-	var pp FoldingSet
+func (f *FoldTree) GeneratePairArrays(seq *base.Sequence) folding.FoldingSet {
+	var pp folding.FoldingSet
 	for _, b := range f.Branches {
 		pp = append(pp, b.GeneratePairArrays(seq)...)
 	}
@@ -203,8 +204,8 @@ func (f *FoldTree) GeneratePairArrays(seq *base.Sequence) FoldingSet {
 		}
 	}
 	if len(pp) == 0 {
-		pp = make(FoldingSet, 1)
-		pp[0] = make(FoldingPairs, len(seq.Bases))
+		pp = make(folding.FoldingSet, 1)
+		pp[0] = make(folding.FoldingPairs, len(seq.Bases))
 		for i := 0; i < len(pp[0]); i++ {
 			pp[0][i] = -9
 		}

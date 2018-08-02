@@ -2,6 +2,8 @@ package base
 
 import "strings"
 
+import "keltainen.duckdns.org/rnafolding/folding"
+
 type Base int
 
 const (
@@ -14,9 +16,10 @@ const (
 )
 
 type Sequence struct {
-	Name    string
-	Comment string
-	Bases   []Base
+	Name             string
+	Comment          string
+	Bases            []Base
+	ReferenceFolding folding.FoldingPairs
 }
 
 func (b Base) String() string {

@@ -11,8 +11,8 @@ import "time"
 
 import "keltainen.duckdns.org/rnafolding/base"
 import "keltainen.duckdns.org/rnafolding/fasta"
+import "keltainen.duckdns.org/rnafolding/folding"
 import "keltainen.duckdns.org/rnafolding/trnadb"
-import "keltainen.duckdns.org/rnafolding/types"
 import "keltainen.duckdns.org/rnafolding/safecomplete"
 import "keltainen.duckdns.org/rnafolding/format"
 
@@ -59,7 +59,7 @@ type Sanity struct {
 }
 
 type Folding struct {
-	Pairing    types.FoldingPairs
+	Pairing    folding.FoldingPairs
 	PairCount  int
 	DotBracket string
 	AsciiArt   string
@@ -74,6 +74,7 @@ type OutputEntry struct {
 	Timing                  Timing
 	Counts                  Counts
 	Sanity                  Sanity
+	ReferenceFolding        Folding
 	ZukerFoldings           []Folding
 	AllFoldings             []Folding
 	SafeCompleteFoldingTree string
@@ -159,7 +160,11 @@ func main() {
 	}
 }
 
-func foldingsToOutputFormat(seq *base.Sequence, ff types.FoldingSet, safety []bool) []Folding {
+func foldingsToOutputFormat(seq *base.Sequence, ff folding.FoldingSet, safety []bool) []Folding {
+	if len(ff) == 1 && ff[0] == nil {
+		// Escape hatch for reference foldings, when one does not exist
+		return []Folding{{}}
+	}
 	out := make([]Folding, len(ff))
 	for i, f := range ff {
 		out[i] = Folding{
@@ -247,6 +252,7 @@ func foldSequence(seq *base.Sequence) OutputEntry {
 			SafeComplete: sanitySafeComplete(sc, scFoldings, flen, scPairArrays, wuFoldings),
 			Safety:       safetySanity,
 		},
+		ReferenceFolding:        foldingsToOutputFormat(seq, folding.FoldingSet{seq.ReferenceFolding}, safety)[0],
 		ZukerFoldings:           foldingsToOutputFormat(seq, zukerOptimals, safety),
 		AllFoldings:             foldingsToOutputFormat(seq, scPairArrays, safety),
 		SafeCompleteFoldingTree: scFoldings.String(),
@@ -285,6 +291,11 @@ func singleFolding(seq *base.Sequence) OutputEntry {
 	if o.Sanity.Safety != "" {
 		log.Print(o.Sanity.Safety)
 	}
+	if o.ReferenceFolding.Pairing != nil {
+		fmt.Printf("Reference folding: (%d pairs)\n", o.ReferenceFolding.PairCount)
+		fmt.Print(format.FoldingWithSafety(seq, o.ReferenceFolding.Pairing, o.Safety))
+	}
+	fmt.Println("Example folding with maximal pairing:")
 	fmt.Print(format.FoldingWithSafety(seq, o.AllFoldings[0].Pairing, o.Safety))
 	fmt.Printf("Safe bases %d/%d (%f %%)\n",
 		o.Counts.SafeBases, o.Counts.SequenceBases, float64(o.Counts.SafeBases*100)/float64(o.Counts.SequenceBases))

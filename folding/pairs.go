@@ -1,9 +1,17 @@
-package types
+package folding
 
 import "log"
 import "sort"
 
 type FoldingPairs []int
+
+func NewFoldingPairs(l int) FoldingPairs {
+	f := make(FoldingPairs, l)
+	for i := 0; i < l; i++ {
+		f[i] = -9
+	}
+	return f
+}
 
 type FoldingSet []FoldingPairs
 

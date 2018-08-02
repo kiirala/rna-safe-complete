@@ -1,9 +1,9 @@
 package nussinov
 
-import "keltainen.duckdns.org/rnafolding/types"
+import "keltainen.duckdns.org/rnafolding/folding"
 
-func (p *Predictor) Backtrack() (int, types.FoldingPairs) {
-	paired := make(types.FoldingPairs, len(p.V))
+func (p *Predictor) Backtrack() (int, folding.FoldingPairs) {
+	paired := make(folding.FoldingPairs, len(p.V))
 	for i := 0; i < len(p.V); i++ {
 		paired[i] = -1
 	}
@@ -11,8 +11,8 @@ func (p *Predictor) Backtrack() (int, types.FoldingPairs) {
 	return p.V[0][len(p.V)-1], paired
 }
 
-func (p *Predictor) JoinedBacktrack(i, j int) (int, types.FoldingPairs) {
-	paired := make(types.FoldingPairs, len(p.V))
+func (p *Predictor) JoinedBacktrack(i, j int) (int, folding.FoldingPairs) {
+	paired := make(folding.FoldingPairs, len(p.V))
 	pairs := 0
 	for i := 0; i < len(p.V); i++ {
 		paired[i] = -1
@@ -29,7 +29,7 @@ func (p *Predictor) JoinedBacktrack(i, j int) (int, types.FoldingPairs) {
 	return pairs, paired
 }
 
-func (p *Predictor) recursiveBacktrack(i, j int, paired types.FoldingPairs) {
+func (p *Predictor) recursiveBacktrack(i, j int, paired folding.FoldingPairs) {
 	if i >= j {
 		return
 	} else if p.Seq.CanPair(i, j, p.MinHairpin) && p.V[i][j] == p.V[i+1][j-1]+1 {
@@ -47,7 +47,7 @@ func (p *Predictor) recursiveBacktrack(i, j int, paired types.FoldingPairs) {
 	}
 }
 
-func (p *Predictor) complementaryBacktrack(i, j int, paired types.FoldingPairs) {
+func (p *Predictor) complementaryBacktrack(i, j int, paired folding.FoldingPairs) {
 	if j-i >= len(p.V)-2 {
 		return
 	}

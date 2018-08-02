@@ -2,27 +2,27 @@ package format
 
 import "testing"
 
-import "keltainen.duckdns.org/rnafolding/types"
+import "keltainen.duckdns.org/rnafolding/folding"
 
 func TestDotBracket(t *testing.T) {
 	var tests = []struct {
-		in       types.FoldingPairs
+		in       folding.FoldingPairs
 		expected string
 	}{
 		{
-			types.FoldingPairs{},
+			folding.FoldingPairs{},
 			"",
 		},
 		{
-			types.FoldingPairs{1, 0},
+			folding.FoldingPairs{1, 0},
 			"()",
 		},
 		{
-			types.FoldingPairs{-1, -1, 3, 2},
+			folding.FoldingPairs{-1, -1, 3, 2},
 			"..()",
 		},
 		{
-			types.FoldingPairs{3, 2, 1, 0},
+			folding.FoldingPairs{3, 2, 1, 0},
 			"(())",
 		},
 	}

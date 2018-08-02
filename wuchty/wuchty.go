@@ -8,7 +8,7 @@ import "log"
 import "fmt"
 
 import "keltainen.duckdns.org/rnafolding/base"
-import "keltainen.duckdns.org/rnafolding/types"
+import "keltainen.duckdns.org/rnafolding/folding"
 
 type Predictor struct {
 	Seq *base.Sequence
@@ -79,8 +79,8 @@ func refinedStructure(s state, i, p []pair, str string) state {
 	return state{ints, pairs, s.structure + str}
 }
 
-func (p *Predictor) BacktrackAll() types.FoldingSet {
-	var out types.FoldingSet
+func (p *Predictor) BacktrackAll() folding.FoldingSet {
+	var out folding.FoldingSet
 	stack := []state{
 		state{
 			[]pair{pair{0, len(p.Seq.Bases) - 1}},
