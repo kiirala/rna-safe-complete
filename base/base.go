@@ -16,10 +16,11 @@ const (
 )
 
 type Sequence struct {
-	Name             string
-	Comment          string
-	Bases            []Base
-	ReferenceFolding folding.FoldingPairs
+	Name              string
+	Comment           string
+	Bases             []Base
+	ReferenceFolding  folding.FoldingPairs
+	ReferencePosition []int
 }
 
 func (b Base) String() string {

@@ -260,10 +260,11 @@ func ReadSequences(r io.Reader) (map[string]*base.Sequence, error) {
 			}
 			fold := parseFold(bases, foldLine, positions)
 			seqs[name] = &base.Sequence{
-				Name:             name,
-				Comment:          comment,
-				Bases:            bases,
-				ReferenceFolding: fold,
+				Name:              name,
+				Comment:           comment,
+				Bases:             bases,
+				ReferenceFolding:  fold,
+				ReferencePosition: positions,
 			}
 		}
 		if err == io.EOF {
