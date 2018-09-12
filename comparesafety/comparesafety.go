@@ -10,7 +10,6 @@ import "time"
 import "keltainen.duckdns.org/rnafolding/base"
 import "keltainen.duckdns.org/rnafolding/fasta"
 import "keltainen.duckdns.org/rnafolding/safecomplete"
-import "keltainen.duckdns.org/rnafolding/types"
 
 var (
 	infile     = flag.String("in", "", "Name of input file from STRAND database")

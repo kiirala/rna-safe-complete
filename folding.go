@@ -331,7 +331,6 @@ func singleFolding(seq *base.Sequence) OutputEntry {
 	fmt.Print(format.FoldingWithSafety(seq, o.AllFoldings[0].Pairing, o.Safety.SafeBase))
 	fmt.Printf("Safe bases %d/%d (%f %%)\n",
 		o.Counts.SafeBases, o.Counts.SequenceBases, float64(o.Counts.SafeBases*100)/float64(o.Counts.SequenceBases))
-	fmt.Print(o.ReferencePosition)
 
 	return o
 }

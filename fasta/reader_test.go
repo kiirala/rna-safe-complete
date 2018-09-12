@@ -6,66 +6,91 @@ import "bufio"
 import "reflect"
 
 import "keltainen.duckdns.org/rnafolding/base"
-
-func TestReadComment(t *testing.T) {
-	var tests = []struct {
-		text     string
-		expected string
-	}{
-		{">", ""},
-		{";", ""},
-		{">Foo", "Foo"},
-		{";Foo", "Foo"},
-		{"> Foo\nACGUT\n", "Foo"},
-		{">sys|1234| foo [bar]\nACCGA", "sys|1234| foo [bar]"},
-	}
-	for _, tt := range tests {
-		actual, err := readComment(bufio.NewReader(strings.NewReader(tt.text)))
-		if err != nil {
-			t.Errorf("readComment(%q): received error: %v", tt.text, err)
-		}
-		if !reflect.DeepEqual(tt.expected, actual) {
-			t.Errorf("readComment(%q): expected %v, actual %v", tt.text, tt.expected, actual)
-		}
-	}
-}
-
-func TestReadCommentNoComment(t *testing.T) {
-	input := "ACCGA\n>Comment here\nACCGA\n"
-	actual, err := readComment(bufio.NewReader(strings.NewReader(input)))
-	if actual != "" || err == nil || !strings.Contains(err.Error(), "no comment") {
-		t.Errorf("readComment(%q): expected (\"\", error of no comment), actual (%v, %v)", input, actual, err)
-	}
-}
+import "keltainen.duckdns.org/rnafolding/folding"
 
 func TestReadBases(t *testing.T) {
 	var tests = []struct {
-		bases    string
-		expected []base.Base
+		input   string
+		comment string
+		bases   []base.Base
+		folding folding.FoldingPairs
 	}{
-		{"", nil},
-		{"\n", nil},
-		{"\t \n", nil},
-		{"ACGUT", []base.Base{base.A, base.C, base.G, base.U, base.U}},
-		{"acgut", []base.Base{base.A, base.C, base.G, base.U, base.U}},
-		{"A\nC\nG\nU\n", []base.Base{base.A, base.C, base.G, base.U}},
-		{"ABCD", []base.Base{base.A, base.Other, base.C, base.Other}},
+		// Only comment
+		{">", "", nil, nil},
+		{";", "", nil, nil},
+		{">Foo", "Foo", nil, nil},
+		{";Foo", "Foo", nil, nil},
+		{">sys|1234| foo [bar]\n", "sys|1234| foo [bar]", nil, nil},
+
+		// Trivial comment + sequence
+		{">Cmt\n", "Cmt", nil, nil},
+		{">Cmt\n\n", "Cmt", nil, nil},
+		{">Cmt\n\t \n", "Cmt", nil, nil},
+		{">Cmt\nACGUT", "Cmt", []base.Base{base.A, base.C, base.G, base.U, base.U}, nil},
+		{">Cmt\nacgut", "Cmt", []base.Base{base.A, base.C, base.G, base.U, base.U}, nil},
+		{">Cmt\nA\nC\nG\nU\n", "Cmt", []base.Base{base.A, base.C, base.G, base.U}, nil},
+		{">Cmt\nABCD", "Cmt", []base.Base{base.A, base.Other, base.C, base.Other}, nil},
 		// Comments inside a sequence are ignored
-		{"AA\n;CC\n>UU\nGG", []base.Base{base.A, base.A, base.G, base.G}},
+		{">Cmt\nAA\n;CC\n>UU\nGG", "Cmt", []base.Base{base.A, base.A, base.G, base.G}, nil},
 		// An asterisk at end of line  ends a sequence
-		{"UUAA*\nGG\n", []base.Base{base.U, base.U, base.A, base.A}},
-		{"UU\nAA\n*\nGG\n", []base.Base{base.U, base.U, base.A, base.A}},
-		{"UU\nAA*GG", []base.Base{base.U, base.U, base.A, base.A, base.Other, base.G, base.G}},
+		{">Cmt\nUUAA*\nGG\n", "Cmt", []base.Base{base.U, base.U, base.A, base.A}, nil},
+		{">Cmt\nUU\nAA\n*\nGG\n", "Cmt", []base.Base{base.U, base.U, base.A, base.A}, nil},
+		{">Cmt\nUU\nAA*GG", "Cmt", []base.Base{base.U, base.U, base.A, base.A, base.Other, base.G, base.G}, nil},
 		// An empty line ends a sequence
-		{"AA\n\nGG\n", []base.Base{base.A, base.A}},
+		{">Cmt\nAA\n\nGG\n", "Cmt", []base.Base{base.A, base.A}, nil},
+
+		// Comment, sequence and folding
+		{
+			">Cmt\nACGUACGU\n.((..)).\n",
+			"Cmt",
+			[]base.Base{base.A, base.C, base.G, base.U, base.A, base.C, base.G, base.U},
+			folding.FoldingPairs{-1, 6, 5, -1, -1, 2, 1, -1},
+		},
+		{
+			">Cmt\nACGUACGU\n((...)).\n",
+			"Cmt",
+			[]base.Base{base.A, base.C, base.G, base.U, base.A, base.C, base.G, base.U},
+			folding.FoldingPairs{6, 5, -1, -1, -1, 1, 0, -1},
+		},
+		{
+			">Cmt\nACGUACGU\n.((...))\n",
+			"Cmt",
+			[]base.Base{base.A, base.C, base.G, base.U, base.A, base.C, base.G, base.U},
+			folding.FoldingPairs{-1, 7, 6, -1, -1, -1, 2, 1},
+		},
+		// Folding with pseudoloop
+		{
+			">Cmt\nACGUACGUACGU\n.(([[..)).]]\n",
+			"Cmt",
+			[]base.Base{base.A, base.C, base.G, base.U, base.A, base.C, base.G, base.U, base.A, base.C, base.G, base.U},
+			folding.FoldingPairs{-1, 8, 7, 11, 10, -1, -1, 2, 1, -1, 4, 3},
+		},
+		{
+			">Cmt\nACGUACGUACGU\n.(([[())).]]\n",
+			"Cmt",
+			[]base.Base{base.A, base.C, base.G, base.U, base.A, base.C, base.G, base.U, base.A, base.C, base.G, base.U},
+			folding.FoldingPairs{-1, 8, 7, 11, 10, 6, 5, 2, 1, -1, 4, 3},
+		},
+		{
+			">Cmt\nACGUACGUACGU\n(.([[..)).]]\n",
+			"Cmt",
+			[]base.Base{base.A, base.C, base.G, base.U, base.A, base.C, base.G, base.U, base.A, base.C, base.G, base.U},
+			folding.FoldingPairs{8, -1, 7, 11, 10, -1, -1, 2, 0, -1, 4, 3},
+		},
 	}
 	for _, tt := range tests {
-		actual, err := readBases(bufio.NewReader(strings.NewReader(tt.bases)))
+		actual, err := ReadSequence(bufio.NewReader(strings.NewReader(tt.input)))
 		if err != nil {
-			t.Errorf("readBases(%q): received error: %v", tt.bases, err)
+			t.Errorf("ReadSequence(%q): received error: %v", tt.input, err)
 		}
-		if !reflect.DeepEqual(tt.expected, actual) {
-			t.Errorf("readBases(%q): expected %#v, actual %#v", tt.bases, tt.expected, actual)
+		if tt.comment != actual.Comment {
+			t.Errorf("ReadSequence(%q): expected comment %#v, actual %#v", tt.input, tt.comment, actual.Comment)
+		}
+		if !reflect.DeepEqual(tt.bases, actual.Bases) {
+			t.Errorf("ReadSequence(%q): expected bases %#v, actual %#v", tt.input, tt.bases, actual.Bases)
+		}
+		if !reflect.DeepEqual(tt.folding, actual.ReferenceFolding) {
+			t.Errorf("ReadSequence(%q): expected folding %#v, actual %#v", tt.input, tt.folding, actual.ReferenceFolding)
 		}
 	}
 }

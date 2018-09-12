@@ -14,66 +14,68 @@ func ReadSequence(r io.Reader) (*base.Sequence, error) {
 	br := bufio.NewReader(r)
 	seq := &base.Sequence{}
 
-	read, err := nextNonEmpty(br)
+	read, err := nextLine(br)
 	if err != nil {
 		return seq, err
 	}
 
+	var comm []string
 	for {
 		if len(read) == 0 {
 			break
 		}
 		if read[0] == ';' || read[0] == '>' || read[0] == '#' {
-			seq.Comment += read[1:]
+			comm = append(comm, strings.TrimSpace(read[1:]))
 		} else {
 			break
 		}
-		read, err = nextNonEmpty(br)
+		read, err = nextLine(br)
 		if err != nil {
 			return seq, err
 		}
 	}
+	seq.Comment = strings.Join(comm, " / ")
 	seq.Name = strings.SplitN(seq.Comment, " ", 2)[0]
 
 	for {
 		if len(read) == 0 {
 			break
 		}
-		if read[0] == ';' || read[0] == '>' {
-			continue
-		}
 		if read[0] == '.' || read[0] == '(' {
 			break
 		}
-		for _, code := range read {
-			seq.Bases = append(seq.Bases, base.FromCode(string(code)))
+		if read[0] != ';' && read[0] != '>' {
+			for _, code := range read {
+				seq.Bases = append(seq.Bases, base.FromCode(string(code)))
+			}
+			if read[len(read)-1] == '*' {
+				seq.Bases = seq.Bases[:len(seq.Bases)-1]
+				break
+			}
 		}
-		if read[len(read)-1] == '*' {
-			seq.Bases = seq.Bases[:len(seq.Bases)-1]
-			break
-		}
-		read, err = nextNonEmpty(br)
+		read, err = nextLine(br)
 		if err != nil {
 			return seq, err
 		}
 	}
 
-	var dotbracket string
-	for {
-		if len(read) == 0 {
-			break
+	if len(read) > 0 && (read[0] == '.' || read[0] == '(') {
+		var dotbracket string
+		for {
+			if len(read) == 0 {
+				break
+			}
+			// Dot-bracket may contain a '>' -- sometimes as first character of a line
+			if read[0] != ';' && read[0] != '#' {
+				dotbracket += read
+			}
+			read, err = nextLine(br)
+			if err != nil {
+				return seq, err
+			}
 		}
-		// Dot-bracket may contain a '>' -- sometimes as first character of a line
-		if read[0] == ';' || read[0] == '#' {
-			continue
-		}
-		dotbracket += read
-		read, err = nextNonEmpty(br)
-		if err != nil {
-			return seq, err
-		}
+		seq.ReferenceFolding = dbToFold(dotbracket)
 	}
-	seq.ReferenceFolding = dbToFold(dotbracket)
 
 	if len(seq.ReferenceFolding) > 0 && len(seq.Bases) != len(seq.ReferenceFolding) {
 		log.Printf("Sequence and its folding are different lengths. Bases: %v, folding: %v", seq.Bases, seq.ReferenceFolding)
@@ -81,18 +83,13 @@ func ReadSequence(r io.Reader) (*base.Sequence, error) {
 	return seq, nil
 }
 
-func nextNonEmpty(r *bufio.Reader) (string, error) {
-	for {
-		read, err := r.ReadString('\n')
-		read = strings.TrimSpace(read)
-		if err == io.EOF {
-			return "", nil
-		}
-		if len(read) == 0 && err == nil {
-			continue
-		}
-		return read, err
+func nextLine(r *bufio.Reader) (string, error) {
+	read, err := r.ReadString('\n')
+	read = strings.TrimSpace(read)
+	if err == io.EOF {
+		return read, nil
 	}
+	return read, err
 }
 
 type Ref struct {
@@ -119,11 +116,13 @@ func getWithType(stack []Ref, c rune) (int, []Ref, error) {
 	for i := len(stack) - 1; i >= 0; i-- {
 		if stack[i].typ == c {
 			if i == len(stack)-1 {
-				return i, stack[:len(stack)-1], nil
+				return stack[i].pos, stack[:len(stack)-1], nil
 			} else if i == 0 {
-				return i, stack[1:], nil
+				return stack[i].pos, stack[1:], nil
 			} else {
-				return i, append(stack[:i], stack[i+1:]...), nil
+				// Grab the .pos before the stack is modified
+				r := stack[i].pos
+				return r, append(stack[:i], stack[i+1:]...), nil
 			}
 		}
 	}
@@ -131,12 +130,14 @@ func getWithType(stack []Ref, c rune) (int, []Ref, error) {
 }
 
 func dbToFold(s string) folding.FoldingPairs {
+	if s == "" {
+		return nil
+	}
 	var stack []Ref
 	fold := make(folding.FoldingPairs, len(s))
 	for i, c := range s {
 		if c == '.' {
 			fold[i] = -1
-			continue
 		} else if ec := toEndChar(c); ec != ' ' {
 			stack = append(stack, Ref{i, ec})
 		} else {
