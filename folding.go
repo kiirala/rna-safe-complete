@@ -3,6 +3,7 @@ package main
 import "encoding/json"
 import "flag"
 import "fmt"
+import "io/ioutil"
 import "log"
 import "os"
 import "path"
@@ -18,6 +19,7 @@ import "keltainen.duckdns.org/rnafolding/format"
 
 var (
 	infile     = flag.String("in", "", "Name of input file in FASTA format")
+	stranddir  = flag.String("stranddir", "", "Directory containing a number of dot-bracket files from STRAND DB")
 	dbfile     = flag.String("db", "", "Location of tRNA database file")
 	trna       = flag.String("trna", "", "Name of tRNA sequence within database file")
 	all        = flag.Bool("all", false, "Analyze all sequences in tRNA database")
@@ -88,8 +90,8 @@ type OutputEntry struct {
 	ReferencePosition       []int
 }
 
-func readFasta() *base.Sequence {
-	f, err := os.Open(*infile)
+func readFasta(fname string) *base.Sequence {
+	f, err := os.Open(fname)
 	if err != nil {
 		log.Fatalf("Unable to open file \"%s\": %v", *infile, err)
 	}
@@ -98,6 +100,19 @@ func readFasta() *base.Sequence {
 		log.Fatalf("Error reading FASTA format file \"%s\": %v", *infile, err)
 	}
 	return seq
+}
+
+func readStrandDir() map[string]*base.Sequence {
+	ff, err := ioutil.ReadDir(*stranddir)
+	if err != nil {
+		log.Fatalf("Unable to list directory %v: %v", *stranddir, err)
+	}
+	ret := make(map[string]*base.Sequence)
+	for _, f := range ff {
+		seq := readFasta(path.Join(*stranddir, f.Name()))
+		ret[seq.Name] = seq
+	}
+	return ret
 }
 
 func readTRNA() map[string]*base.Sequence {
@@ -117,27 +132,32 @@ func main() {
 
 	var seq *base.Sequence
 	var seqs map[string]*base.Sequence
-	if *infile == "" && *dbfile == "" {
+	if *infile == "" && *dbfile == "" && *stranddir == "" {
 		log.Fatal("Please specify either -in parameter or -db parameters")
 	} else if *infile != "" && *dbfile != "" {
 		log.Fatal("Specify either -in or -db parameter, not both")
 	} else if *infile != "" {
-		seq = readFasta()
+		seq = readFasta(*infile)
+	} else if *stranddir != "" {
+		seqs = readStrandDir()
 	} else {
 		seqs = readTRNA()
-		if *trna != "" {
-			s, ok := seqs[*trna]
-			if !ok {
-				log.Fatalf("tRNA sequence \"%s\" not found in %s", *trna, *dbfile)
-			}
-			seq = s
-		} else if !*all {
-			log.Fatal("Specify either a tRNA sequence with -trna flag or all sequences with -all flag")
+	}
+
+	if seq != nil {
+		// Do nothing
+	} else if *trna != "" {
+		s, ok := seqs[*trna]
+		if !ok {
+			log.Fatalf("tRNA sequence \"%s\" not found in %s", *trna, *dbfile)
 		}
+		seq = s
+	} else if !*all {
+		log.Fatal("Specify either a tRNA sequence with -trna flag or all sequences with -all flag")
 	}
 
 	out := make(chan OutputEntry, 1)
-	if *dbfile != "" && *all {
+	if seqs != nil && *all {
 		go foldingStats(seqs, out)
 	} else {
 		o := singleFolding(seq)

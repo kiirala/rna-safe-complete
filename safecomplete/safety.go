@@ -3,6 +3,7 @@ package safecomplete
 import "log"
 
 import "keltainen.duckdns.org/rnafolding/folding"
+import "keltainen.duckdns.org/rnafolding/types"
 
 func TrivialSafety(foldings folding.FoldingSet) []bool {
 	out := make([]bool, len(foldings[0]))
@@ -13,6 +14,26 @@ func TrivialSafety(foldings folding.FoldingSet) []bool {
 		for i := 0; i < len(f); i++ {
 			if f[i] != foldings[0][i] && (f[i] >= 0 || foldings[0][i] >= 0) {
 				out[i] = false
+			}
+		}
+	}
+	return out
+}
+
+func (p *Predictor) IteratedTrivialSafety(folds *types.FoldTree) []bool {
+	out := make([]bool, len(p.Seq.Bases))
+	for i := 0; i < len(out); i++ {
+		out[i] = true
+	}
+	var ref folding.FoldingPairs
+	for f := range folds.PairArrayIterator(p.Seq) {
+		if ref == nil {
+			ref = f
+		} else {
+			for i := 0; i < len(out); i++ {
+				if f[i] != ref[i] && (f[i] >= 0 || ref[i] >= 0) {
+					out[i] = false
+				}
 			}
 		}
 	}

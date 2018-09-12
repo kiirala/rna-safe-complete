@@ -205,10 +205,7 @@ func (f *FoldTree) GeneratePairArrays(seq *base.Sequence) folding.FoldingSet {
 	}
 	if len(pp) == 0 {
 		pp = make(folding.FoldingSet, 1)
-		pp[0] = make(folding.FoldingPairs, len(seq.Bases))
-		for i := 0; i < len(pp[0]); i++ {
-			pp[0][i] = -9
-		}
+		pp[0] = folding.NewFoldingPairs(len(seq.Bases))
 	}
 	for _, p := range pp {
 		for _, pair := range f.Pairs {
@@ -220,6 +217,46 @@ func (f *FoldTree) GeneratePairArrays(seq *base.Sequence) folding.FoldingSet {
 		}
 	}
 	return pp
+}
+
+func (f *FoldTree) PairArrayIterator(seq *base.Sequence) <-chan folding.FoldingPairs {
+	fold := folding.NewFoldingPairs(len(seq.Bases))
+	return f.pairArrayIteratorInternal(seq, fold)
+}
+
+func (f *FoldTree) pairArrayIteratorInternal(seq *base.Sequence, fold folding.FoldingPairs) <-chan folding.FoldingPairs {
+	ch := make(chan folding.FoldingPairs)
+	go f.recursivePairArrayIterator(seq, fold, ch)
+	return ch
+}
+
+func (f *FoldTree) recursivePairArrayIterator(seq *base.Sequence, fold folding.FoldingPairs, ch chan folding.FoldingPairs) {
+	for _, pair := range f.Pairs {
+		fold[pair.I] = pair.J
+		fold[pair.J] = pair.I
+	}
+	for _, free := range f.Free {
+		fold[free] = -1
+	}
+
+	if len(f.Branches) == 0 && f.JoinPrefix == nil {
+		ch <- fold
+	}
+	for _, b := range f.Branches {
+		fcopy := folding.NewFoldingPairs(len(seq.Bases))
+		copy(fcopy, fold)
+		b.recursivePairArrayIterator(seq, fcopy, ch)
+	}
+	if f.JoinPrefix != nil {
+		fcopy := folding.NewFoldingPairs(len(seq.Bases))
+		copy(fcopy, fold)
+		for pa := range f.JoinPrefix.pairArrayIteratorInternal(seq, fcopy) {
+			fnew := folding.NewFoldingPairs(len(seq.Bases))
+			for sa := range f.JoinSuffix.pairArrayIteratorInternal(seq, fnew) {
+				ch <- joinArrays(pa, sa)
+			}
+		}
+	}
 }
 
 func (f *FoldTree) String() string {
