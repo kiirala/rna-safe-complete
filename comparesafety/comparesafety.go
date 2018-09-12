@@ -29,7 +29,15 @@ func main() {
 
 	log.Printf("Starting...")
 	sPredict := time.Now()
-	sc, folds := predict(seq)
+	sc := &safecomplete.Predictor{
+		Seq:        seq,
+		MinHairpin: *minhairpin,
+	}
+	sc.FillArray()
+
+	sc.CountSolutions()
+
+	folds := sc.BacktrackAll()
 	tPredict := time.Since(sPredict)
 	log.Printf("Prediction done")
 
@@ -50,19 +58,6 @@ func main() {
 	fmt.Print("# Name NumFolds TimePred TimeTriv TimeCplx\n")
 	fmt.Printf("%s %8d %8.2f %8.2f %8.2f\n", seq.Name, folds.CountSolutions(),
 		tPredict.Seconds(), tTrivial.Seconds(), tComplex.Seconds())
-}
-
-func predict(seq *base.Sequence) (*safecomplete.Predictor, *types.FoldTree) {
-	sc := &safecomplete.Predictor{
-		Seq:        seq,
-		MinHairpin: *minhairpin,
-	}
-	sc.FillArray()
-
-	sc.CountSolutions()
-
-	scFoldings := sc.BacktrackAll()
-	return sc, scFoldings
 }
 
 func readFasta(fname string) *base.Sequence {
