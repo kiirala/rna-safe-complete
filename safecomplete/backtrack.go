@@ -57,6 +57,7 @@ func (p *Predictor) recursiveBacktrack(i, j int, folding *types.FoldTree, numSol
 		branch.Pairs = append(branch.Pairs, types.Pair{I: i, J: j})
 		p.recursiveBacktrack(i+1, j-1, branch, partNumSols)
 	}
+
 	for k := i; k < j; k++ {
 		if p.V[i][j] == p.V[i][k]+p.W[k+1][j] && p.W[k+1][j] > 0 {
 			partNumSols := p.Sol[i][k] * p.Sol[k+2][j-1] * solScale
@@ -74,6 +75,7 @@ func (p *Predictor) recursiveBacktrack(i, j int, folding *types.FoldTree, numSol
 			p.recursiveBacktrack(k+2, j-1, branch.JoinSuffix, partNumSols)
 		}
 	}
+
 	if p.V[i][j] == p.V[i][j-1] {
 		partNumSols := p.Sol[i][j-1] * solScale
 		branch := folding
@@ -87,17 +89,5 @@ func (p *Predictor) recursiveBacktrack(i, j int, folding *types.FoldTree, numSol
 		p.recursiveBacktrack(j, j, branch.JoinSuffix, partNumSols)
 	}
 
-	/*
-		if numFound == 0 {
-			for k := j - 1; k >= i; k-- {
-				if p.V[i][j] == p.V[i][k]+p.V[k+1][j] {
-					folding.JoinPrefix = &types.FoldTree{}
-					p.recursiveBacktrack(i, k, folding.JoinPrefix)
-					folding.JoinSuffix = &types.FoldTree{}
-					p.recursiveBacktrack(k+1, j, folding.JoinSuffix)
-					break
-				}
-			}
-		}
-	*/
+	folding.SimplifyImmediate()
 }

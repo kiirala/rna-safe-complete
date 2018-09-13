@@ -27,7 +27,7 @@ func main() {
 	seq := readFasta(*infile)
 
 	log.Printf("Starting...")
-	sPredict := time.Now()
+	sFill := time.Now()
 	sc := &safecomplete.Predictor{
 		Seq:        seq,
 		MinHairpin: *minhairpin,
@@ -35,10 +35,13 @@ func main() {
 	sc.FillArray()
 
 	sc.CountSolutions()
+	tFill := time.Since(sFill)
+	log.Printf("Filling DP arrays done in %.0f seconds, %d solutions", tFill.Seconds(), sc.Sol[0][len(sc.Sol[0])-1])
 
+	sBacktrack := time.Now()
 	folds := sc.BacktrackAll()
-	tPredict := time.Since(sPredict)
-	log.Printf("Prediction done")
+	tBacktrack := time.Since(sBacktrack)
+	log.Printf("Prediction done in %.0f seconds", tBacktrack.Seconds())
 
 	sTrivial := time.Now()
 	trivialSafety := sc.IteratedTrivialSafety(folds)
@@ -54,9 +57,9 @@ func main() {
 		log.Printf("Sanity check failed! IteratedTrivialSafety and SafetyFromBacktrack return different values!")
 	}
 
-	fmt.Print("# Name NumFolds TimePred TimeTriv TimeCplx\n")
-	fmt.Printf("%s %8d %8.2f %8.2f %8.2f\n", seq.Name, folds.CountSolutions(),
-		tPredict.Seconds(), tTrivial.Seconds(), tComplex.Seconds())
+	fmt.Print("# Name NumFolds TimeFill TimeBTrk TimeTriv TimeCplx\n")
+	fmt.Printf("%s %8d %8.2f %8.2f %8.2f %8.2f\n", seq.Name, folds.CountSolutions(),
+		tFill.Seconds(), tBacktrack.Seconds(), tTrivial.Seconds(), tComplex.Seconds())
 }
 
 func readFasta(fname string) *base.Sequence {

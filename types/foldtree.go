@@ -178,6 +178,46 @@ func (f *FoldTree) LiftCommon() {
 	}
 }
 
+func (f *FoldTree) SimplifyImmediate() {
+	if f.JoinPrefix != nil {
+		f.Pairs = append(f.Pairs, f.JoinPrefix.Pairs...)
+		f.JoinPrefix.Pairs = nil
+		f.Free = append(f.Free, f.JoinPrefix.Free...)
+		f.JoinPrefix.Free = nil
+		f.Pairs = append(f.Pairs, f.JoinSuffix.Pairs...)
+		f.JoinSuffix.Pairs = nil
+		f.Free = append(f.Free, f.JoinSuffix.Free...)
+		f.JoinSuffix.Free = nil
+
+		if branchless(f.JoinPrefix) || branchless(f.JoinSuffix) {
+			pref := f.JoinPrefix
+			suff := f.JoinSuffix
+			f.JoinPrefix = nil
+			f.JoinSuffix = nil
+			if !branchless(pref) {
+				liftBranches(f, pref)
+			} else if !branchless(suff) {
+				liftBranches(f, suff)
+			}
+		}
+	}
+
+	if len(f.Branches) > 0 {
+		pairs := newPairSet(f.Branches[0].Pairs)
+		free := newFreeSet(f.Branches[0].Free)
+		for _, b := range f.Branches {
+			pairs = pairs.intersect(b.Pairs)
+			free = free.intersect(b.Free)
+		}
+		f.Pairs = pairs.addTo(f.Pairs)
+		f.Free = free.addTo(f.Free)
+		for _, b := range f.Branches {
+			b.Pairs = pairs.removedFrom(b.Pairs)
+			b.Free = free.removedFrom(b.Free)
+		}
+	}
+}
+
 func joinArrays(a, b folding.FoldingPairs) []int {
 	ret := make([]int, len(a))
 	copy(ret, a)
@@ -225,9 +265,14 @@ func (f *FoldTree) PairArrayIterator(seq *base.Sequence) <-chan folding.FoldingP
 }
 
 func (f *FoldTree) pairArrayIteratorInternal(seq *base.Sequence, fold folding.FoldingPairs) <-chan folding.FoldingPairs {
-	ch := make(chan folding.FoldingPairs)
-	go f.recursivePairArrayIterator(seq, fold, ch)
+	ch := make(chan folding.FoldingPairs, 10)
+	go f.recursivePAIEntry(seq, fold, ch)
 	return ch
+}
+
+func (f *FoldTree) recursivePAIEntry(seq *base.Sequence, fold folding.FoldingPairs, ch chan folding.FoldingPairs) {
+	f.recursivePairArrayIterator(seq, fold, ch)
+	close(ch)
 }
 
 func (f *FoldTree) recursivePairArrayIterator(seq *base.Sequence, fold folding.FoldingPairs, ch chan folding.FoldingPairs) {
