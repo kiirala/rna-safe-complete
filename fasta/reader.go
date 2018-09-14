@@ -12,12 +12,42 @@ import "keltainen.duckdns.org/rnafolding/folding"
 
 func ReadSequence(r io.Reader) (*base.Sequence, error) {
 	br := bufio.NewReader(r)
-	seq := &base.Sequence{}
-
-	read, err := nextLine(br)
-	if err != nil {
-		return seq, err
+	seq, err := readSingleSequence(br)
+	if err == io.EOF {
+		err = nil
 	}
+	return seq, err
+}
+
+func ReadMultiSequence(r io.Reader) (map[string]*base.Sequence, error) {
+	br := bufio.NewReader(r)
+	ret := make(map[string]*base.Sequence)
+	for {
+		seq, err := readSingleSequence(br)
+		if seq != nil {
+			ret[seq.Name] = seq
+		}
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return ret, err
+		}
+	}
+	return ret, nil
+}
+
+func readSingleSequence(br *bufio.Reader) (*base.Sequence, error) {
+	read, err := br.ReadString('\n')
+	read = strings.TrimSpace(read)
+	if err == io.EOF {
+		if len(read) == 0 {
+			return nil, err
+		}
+	} else if err != nil {
+		return nil, err
+	}
+
+	seq := &base.Sequence{}
 
 	var comm []string
 	for {
@@ -33,8 +63,17 @@ func ReadSequence(r io.Reader) (*base.Sequence, error) {
 		if err != nil {
 			return seq, err
 		}
+		// STRAND files have an empty line between comment and sequence
+		if len(read) == 0 {
+			read, err = nextLine(br)
+			if err != nil {
+				return seq, err
+			}
+			break
+		}
 	}
 	seq.Comment = strings.Join(comm, " / ")
+	seq.Comment = strings.TrimPrefix(seq.Comment, "File ")
 	seq.Name = strings.SplitN(seq.Comment, " ", 2)[0]
 
 	for {

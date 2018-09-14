@@ -19,7 +19,7 @@ import "keltainen.duckdns.org/rnafolding/format"
 
 var (
 	infile     = flag.String("in", "", "Name of input file in FASTA format")
-	stranddir  = flag.String("stranddir", "", "Directory containing a number of dot-bracket files from STRAND DB")
+	strand     = flag.String("strand", "", "Directory or file containing a number of dot-bracket files from STRAND DB")
 	dbfile     = flag.String("db", "", "Location of tRNA database file")
 	trna       = flag.String("trna", "", "Name of tRNA sequence within database file")
 	all        = flag.Bool("all", false, "Analyze all sequences in tRNA database")
@@ -102,17 +102,36 @@ func readFasta(fname string) *base.Sequence {
 	return seq
 }
 
-func readStrandDir() map[string]*base.Sequence {
-	ff, err := ioutil.ReadDir(*stranddir)
+func readMultiFasta(fname string) map[string]*base.Sequence {
+	f, err := os.Open(fname)
 	if err != nil {
-		log.Fatalf("Unable to list directory %v: %v", *stranddir, err)
+		log.Fatalf("Unable to open file \"%s\": %v", *infile, err)
 	}
-	ret := make(map[string]*base.Sequence)
-	for _, f := range ff {
-		seq := readFasta(path.Join(*stranddir, f.Name()))
-		ret[seq.Name] = seq
+	seq, err := fasta.ReadMultiSequence(f)
+	if err != nil {
+		log.Fatalf("Error reading FASTA format file \"%s\": %v", *infile, err)
 	}
-	return ret
+	return seq
+}
+
+func readStrand() map[string]*base.Sequence {
+	stat, err := os.Stat(*strand)
+	if err != nil {
+		log.Fatalf("Unable to stat %v: %v", *strand, err)
+	}
+	if stat.IsDir() {
+		ff, err := ioutil.ReadDir(*strand)
+		if err != nil {
+			log.Fatalf("Unable to list directory %v: %v", *strand, err)
+		}
+		ret := make(map[string]*base.Sequence)
+		for _, f := range ff {
+			seq := readFasta(path.Join(*strand, f.Name()))
+			ret[seq.Name] = seq
+		}
+		return ret
+	}
+	return readMultiFasta(*strand)
 }
 
 func readTRNA() map[string]*base.Sequence {
@@ -132,14 +151,14 @@ func main() {
 
 	var seq *base.Sequence
 	var seqs map[string]*base.Sequence
-	if *infile == "" && *dbfile == "" && *stranddir == "" {
-		log.Fatal("Please specify either -in parameter or -db parameters")
+	if *infile == "" && *dbfile == "" && *strand == "" {
+		log.Fatal("Please specify either -in, -db or -strand parameters")
 	} else if *infile != "" && *dbfile != "" {
 		log.Fatal("Specify either -in or -db parameter, not both")
 	} else if *infile != "" {
 		seq = readFasta(*infile)
-	} else if *stranddir != "" {
-		seqs = readStrandDir()
+	} else if *strand != "" {
+		seqs = readStrand()
 	} else {
 		seqs = readTRNA()
 	}
