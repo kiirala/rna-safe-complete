@@ -1,6 +1,7 @@
 package safecomplete
 
 import "log"
+import "math/big"
 
 import "keltainen.duckdns.org/rnafolding/folding"
 import "keltainen.duckdns.org/rnafolding/types"
@@ -44,24 +45,25 @@ func (p *Predictor) SafetyFromBacktrack() []bool {
 	out := make([]bool, len(p.Seq.Bases))
 	max := p.Sol[0][len(p.Seq.Bases)-1]
 	for i := 0; i < len(out); i++ {
-		sum := p.SingleSafety[i]
+		sum := new(big.Int).Set(p.SingleSafety[i])
 		numPairings := 0
 		for j := 0; j < i; j++ {
-			if p.PairSafety[j][i] > 0 {
+			if p.PairSafety[j][i].Cmp(new(big.Int)) > 0 {
 				numPairings++
-				sum += p.PairSafety[j][i]
+				sum.Add(sum, p.PairSafety[j][i])
 			}
 		}
 		for j := i; j < len(out); j++ {
-			if p.PairSafety[i][j] > 0 {
+			if p.PairSafety[i][j].Cmp(new(big.Int)) > 0 {
 				numPairings++
-				sum += p.PairSafety[i][j]
+				sum.Add(sum, p.PairSafety[i][j])
 			}
 		}
-		if sum != max {
+		if sum.Cmp(max) != 0 {
 			log.Printf("SafetyFromBacktrack: base %d is in %d solutions, expected %d", i, sum, max)
 		}
-		if (p.SingleSafety[i] == 0 && numPairings == 1) || (p.SingleSafety[i] > 0 && numPairings == 0) {
+		if (p.SingleSafety[i].Cmp(new(big.Int)) == 0 && numPairings == 1) ||
+			(p.SingleSafety[i].Cmp(new(big.Int)) > 0 && numPairings == 0) {
 			out[i] = true
 		} else {
 			out[i] = false

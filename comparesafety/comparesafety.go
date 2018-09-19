@@ -5,6 +5,7 @@ import "fmt"
 import "io/ioutil"
 import "log"
 import "os"
+import "path"
 import "reflect"
 import "time"
 
@@ -111,9 +112,10 @@ func readFasta(fname string) map[string]*base.Sequence {
 		}
 		ret := make(map[string]*base.Sequence)
 		for _, fn := range ff {
-			f, err := os.Open(fn.Name())
+			subfname := path.Join(fname, fn.Name())
+			f, err := os.Open(subfname)
 			if err != nil {
-				log.Fatalf("Unable to open file \"%s\": %v", fn, err)
+				log.Fatalf("Unable to open file \"%s\": %v", subfname, err)
 			}
 			seq, err := fasta.ReadSequence(f)
 			if err != nil {

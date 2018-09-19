@@ -1,6 +1,7 @@
 package main
 
 import "fmt"
+import "math/big"
 import "reflect"
 import "sort"
 import "strings"
@@ -88,7 +89,7 @@ func runSafeComplete(seq *base.Sequence) (*safecomplete.Predictor, *types.FoldTr
 
 func sanitySafeComplete(sc *safecomplete.Predictor, scFoldings *types.FoldTree, numOptimalPairs int, scPairArrays folding.FoldingSet, wuFoldings folding.FoldingSet) string {
 	var out []string
-	if numSol := scFoldings.CountSolutions(); sc.Sol[0][len(sc.Sol)-1] != numSol {
+	if numSol := scFoldings.CountSolutions(); sc.Sol[0][len(sc.Sol)-1].Cmp(big.NewInt(int64(numSol))) != 0 {
 		out = append(out, fmt.Sprintf("Sanity check failed! Solution count matrix shows %d solutions, folding tree %d solutions", sc.Sol[0][len(sc.Sol)-1], numSol))
 	}
 

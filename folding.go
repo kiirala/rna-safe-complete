@@ -5,6 +5,7 @@ import "flag"
 import "fmt"
 import "io/ioutil"
 import "log"
+import "math/big"
 import "os"
 import "path"
 import "reflect"
@@ -69,8 +70,8 @@ type Folding struct {
 
 type Safety struct {
 	SafeBase  []bool
-	PairCount [][]int
-	FreeCount []int
+	PairCount [][]*big.Int
+	FreeCount []*big.Int
 }
 
 type OutputEntry struct {
