@@ -118,7 +118,11 @@ func singleFoldingSanity(seq *base.Sequence, f folding.FoldingPairs, numPairs in
 		}
 		if f[j] != i {
 			k := f[j]
-			errs = append(errs, fmt.Sprintf("Non-symmetric pair: %d (%s) -> %d (%s) but %[3]d (%s) -> %d (%s)", i, seq.Bases[i].ToCode(), j, seq.Bases[j].ToCode(), k, seq.Bases[k].ToCode()))
+			if k >= 0 && k < len(seq.Bases) {
+				errs = append(errs, fmt.Sprintf("Non-symmetric pair: %d (%s) -> %d (%s) but %[3]d (%s) -> %d (%s)", i, seq.Bases[i].ToCode(), j, seq.Bases[j].ToCode(), k, seq.Bases[k].ToCode()))
+			} else {
+				errs = append(errs, fmt.Sprintf("Non-symmetric pair: %d (%s) -> %d (%s) but %[3]d (%s) -> %d (outside sequence)", i, seq.Bases[i].ToCode(), j, seq.Bases[j].ToCode(), k))
+			}
 		}
 		if i < j && !seq.CanPair(i, j, *minhairpin) {
 			errs = append(errs, fmt.Sprintf("%d (%s) and %d (%s) are paired, but not a valid base pair", i, seq.Bases[i].ToCode(), j, seq.Bases[j].ToCode()))

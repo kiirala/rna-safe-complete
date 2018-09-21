@@ -53,7 +53,7 @@ func (p *Predictor) SafetyFromBacktrack() []bool {
 				sum.Add(sum, p.PairSafety[j][i])
 			}
 		}
-		for j := i; j < len(out); j++ {
+		for j := i + 1; j < len(out); j++ {
 			if p.PairSafety[i][j].Cmp(new(big.Int)) > 0 {
 				numPairings++
 				sum.Add(sum, p.PairSafety[i][j])

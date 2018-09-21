@@ -71,7 +71,7 @@ func analyze(seqs map[string]*base.Sequence, ret chan retitem) {
 
 		sc.CountSolutions()
 		tFill := time.Since(sFill)
-		//log.Printf("Filling DP arrays done in %.0f seconds, %d solutions", tFill.Seconds(), sc.Sol[0][len(sc.Sol[0])-1])
+		log.Printf("Filling DP arrays done in %.0f seconds, %d solutions", tFill.Seconds(), sc.Sol[0][len(sc.Sol[0])-1])
 
 		sBacktrack := time.Now()
 		folds := sc.BacktrackAll()

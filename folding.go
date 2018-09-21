@@ -204,6 +204,11 @@ func main() {
 				log.Print("Failed to write to %s: %v", fname, err)
 			}
 		}
+	} else {
+		for o := range out {
+			o = o
+			// No need to do more when not writing output to file
+		}
 	}
 }
 

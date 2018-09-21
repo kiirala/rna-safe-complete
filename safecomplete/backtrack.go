@@ -11,10 +11,16 @@ func (p *Predictor) BacktrackAll() *types.FoldTree {
 	}
 	numBases := len(p.Seq.Bases)
 	p.PairSafety = make([][]*big.Int, numBases)
-	for i := 0; i < len(p.Seq.Bases); i++ {
+	for i := 0; i < numBases; i++ {
 		p.PairSafety[i] = make([]*big.Int, numBases)
+		for j := i + 1; j < numBases; j++ {
+			p.PairSafety[i][j] = new(big.Int)
+		}
 	}
 	p.SingleSafety = make([]*big.Int, numBases)
+	for i := 0; i < numBases; i++ {
+		p.SingleSafety[i] = new(big.Int)
+	}
 	folding := &types.FoldTree{}
 	p.recursiveBacktrack(0, numBases-1, folding, p.Sol[0][numBases-1])
 	return folding
@@ -36,61 +42,35 @@ func (p *Predictor) recursiveBacktrack(i, j int, folding *types.FoldTree, numSol
 		log.Printf("recursiveBacktrack(%d, %d, ...): numSols=%v is not divisible by p.Sol=%v",
 			i, j, numSols, p.Sol[i][j])
 	}
-	numFound := 0
-	if p.Seq.CanPair(i, j, p.MinHairpin) && p.V[i][j] == p.V[i+1][j-1]+1 {
-		numFound++
-	}
-	for k := i; k < j; k++ {
-		if p.V[i][j] == p.V[i][k]+p.W[k+1][j] && p.W[k+1][j] > 0 {
-			numFound++
-		}
-	}
-	if p.V[i][j] == p.V[i][j-1] {
-		numFound++
-	}
 
-	if p.Seq.CanPair(i, j, p.MinHairpin) && p.V[i][j] == p.V[i+1][j-1]+1 {
+	splits := p.findSplits(i, j)
+
+	for _, s := range splits {
 		branch := folding
-		if numFound > 1 {
+		if len(splits) > 1 {
 			branch = &types.FoldTree{}
 			folding.Branches = append(folding.Branches, branch)
 		}
-		partNumSols := new(big.Int).Mul(p.Sol[i+1][j-1], solScale)
-		p.PairSafety[i][j].Add(p.PairSafety[i][j], partNumSols)
-		branch.Pairs = append(branch.Pairs, types.Pair{I: i, J: j})
-		p.recursiveBacktrack(i+1, j-1, branch, partNumSols)
-	}
 
-	for k := i; k < j; k++ {
-		if p.V[i][j] == p.V[i][k]+p.W[k+1][j] && p.W[k+1][j] > 0 {
-			partNumSols := new(big.Int).Mul(p.Sol[i][k], p.Sol[k+2][j-1])
-			partNumSols.Mul(partNumSols, solScale)
-			branch := folding
-			if numFound > 1 {
-				branch = &types.FoldTree{}
-				folding.Branches = append(folding.Branches, branch)
-			}
+		partNumSols := new(big.Int).Mul(p.Sol[s.Pre.I][s.Pre.J], solScale)
+		if s.Suf != nil {
+			partNumSols.Mul(partNumSols, p.Sol[s.Suf.I][s.Suf.J])
+		}
+
+		if s.Pair != nil {
+			p.PairSafety[s.Pair.I][s.Pair.J].Add(p.PairSafety[s.Pair.I][s.Pair.J], partNumSols)
+			branch.Pairs = append(branch.Pairs, types.Pair{I: s.Pair.I, J: s.Pair.J})
+		}
+
+		if s.Suf != nil {
 			branch.JoinPrefix = &types.FoldTree{}
-			p.recursiveBacktrack(i, k, branch.JoinPrefix, partNumSols)
-
+			p.recursiveBacktrack(s.Pre.I, s.Pre.J, branch.JoinPrefix, partNumSols)
 			branch.JoinSuffix = &types.FoldTree{}
-			p.PairSafety[k+1][j].Add(p.PairSafety[k+1][j], partNumSols)
-			branch.JoinSuffix.Pairs = append(branch.JoinSuffix.Pairs, types.Pair{I: k + 1, J: j})
-			p.recursiveBacktrack(k+2, j-1, branch.JoinSuffix, partNumSols)
+			p.recursiveBacktrack(s.Suf.I, s.Suf.J, branch.JoinSuffix, partNumSols)
+		} else {
+			p.recursiveBacktrack(s.Pre.I, s.Pre.J, branch, partNumSols)
 		}
-	}
 
-	if p.V[i][j] == p.V[i][j-1] {
-		partNumSols := new(big.Int).Mul(p.Sol[i][j-1], solScale)
-		branch := folding
-		if numFound > 1 {
-			branch = &types.FoldTree{}
-			folding.Branches = append(folding.Branches, branch)
-		}
-		branch.JoinPrefix = &types.FoldTree{}
-		p.recursiveBacktrack(i, j-1, branch.JoinPrefix, partNumSols)
-		branch.JoinSuffix = &types.FoldTree{}
-		p.recursiveBacktrack(j, j, branch.JoinSuffix, partNumSols)
 	}
 
 	folding.SimplifyImmediate()
