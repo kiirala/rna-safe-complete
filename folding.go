@@ -256,6 +256,8 @@ func foldSequence(seq *base.Sequence) OutputEntry {
 	safety := safecomplete.TrivialSafety(scPairArrays)
 	trsaTime := time.Since(trsaStart)
 	newsaStart := time.Now()
+	sc.CountSolutions()
+	sc.CountPairings()
 	newSafety := sc.SafetyFromBacktrack()
 	newsaTime := time.Since(newsaStart)
 

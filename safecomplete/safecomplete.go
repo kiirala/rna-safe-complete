@@ -9,6 +9,7 @@ type Predictor struct {
 	V            [][]int
 	W            [][]int
 	Sol          [][]*big.Int
+	UsedBy       [][]*big.Int
 	PairSafety   [][]*big.Int
 	SingleSafety []*big.Int
 

@@ -81,9 +81,7 @@ func runSafeComplete(seq *base.Sequence) (*safecomplete.Predictor, *types.FoldTr
 	}
 	sc.FillArray()
 
-	sc.CountSolutions()
-
-	scFoldings := sc.BacktrackAll()
+	scFoldings := sc.BacktrackFolding()
 	return sc, scFoldings
 }
 
