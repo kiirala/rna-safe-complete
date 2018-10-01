@@ -113,7 +113,7 @@ func readSingleSequence(br *bufio.Reader) (*base.Sequence, error) {
 				return seq, err
 			}
 		}
-		seq.ReferenceFolding = dbToFold(dotbracket)
+		seq.ReferenceFolding = DbToFold(dotbracket)
 	}
 
 	if len(seq.ReferenceFolding) > 0 && len(seq.Bases) != len(seq.ReferenceFolding) {
@@ -168,7 +168,7 @@ func getWithType(stack []Ref, c rune) (int, []Ref, error) {
 	return 0, stack, fmt.Errorf("Didn't find matching pair for '%c' (%v) in %v", c, c, stack)
 }
 
-func dbToFold(s string) folding.FoldingPairs {
+func DbToFold(s string) folding.FoldingPairs {
 	if s == "" {
 		return nil
 	}
