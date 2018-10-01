@@ -1,5 +1,6 @@
 package main
 
+import "encoding/json"
 import "flag"
 import "fmt"
 import "io/ioutil"
@@ -11,12 +12,15 @@ import "time"
 
 import "keltainen.duckdns.org/rnafolding/base"
 import "keltainen.duckdns.org/rnafolding/fasta"
+import "keltainen.duckdns.org/rnafolding/nussinov"
 import "keltainen.duckdns.org/rnafolding/safecomplete"
 
 var (
 	infile     = flag.String("in", "", "Name of input file from STRAND database")
 	name       = flag.String("name", "", "Name of sequence within STRAND file")
 	minhairpin = flag.Int("minhairpin", 3, "Minimum number of free bases in hairpin loop")
+	single     = flag.Bool("single", false, "Solve only a single optimal folding, without safety")
+	jsonout    = flag.Bool("json", false, "JSON output")
 )
 
 func main() {
@@ -40,23 +44,39 @@ func main() {
 	log.Printf("Analyzing %d sequences", len(seqs))
 
 	vals := make(chan retitem, 1)
-	go analyze(seqs, vals)
+	if *single {
+		go singleAnalyze(seqs, vals)
+	} else {
+		go analyze(seqs, vals)
+	}
 
-	fmt.Print("# Name          NumBases NumFolds TimeFill TimeBTrk TimeTriv TimeCplx\n")
-	for r := range vals {
-		fmt.Printf("%-15s %8d %8s %8.2f %8.2f %8.2f %8.2f\n",
-			r.name, r.bases, approxint(r.numfolds), r.tfill, r.tbacktrack, r.ttrivial, r.tcomplex)
+	if *jsonout {
+		for r := range vals {
+			d, err := json.Marshal(r)
+			if err != nil {
+				log.Printf("Failed to write JSON: %v", err)
+			}
+			os.Stdout.Write(d)
+		}
+	} else {
+		fmt.Print("# Name          NumBases NumFolds NumPairs TimeFill TimeCplx\n")
+		for r := range vals {
+			fmt.Printf("%-15s %8d %8s %8d %8.2f %8.2f\n",
+				r.Name, r.Bases, approxint(r.Numfolds), r.NumPairs, r.Tfill, r.Tcomplex)
+		}
 	}
 }
 
 type retitem struct {
-	name       string
-	bases      int
-	numfolds   *big.Int
-	tfill      float64
-	tbacktrack float64
-	ttrivial   float64
-	tcomplex   float64
+	Name       string
+	Bases      int
+	Numfolds   *big.Int
+	NumPairs   int
+	Tfill      float64
+	Tcomplex   float64
+	Tbacktrack float64
+	Pairs      [][]*big.Int
+	Free       []*big.Int
 }
 
 func analyze(seqs map[string]*base.Sequence, ret chan retitem) {
@@ -79,26 +99,32 @@ func analyze(seqs map[string]*base.Sequence, ret chan retitem) {
 		tComplex := time.Since(sComplex)
 		//log.Printf("Safety done in %.0f seconds, %d solutions", tComplex.Seconds(), sc.Sol[0][len(sc.Sol[0])-1])
 
-		//sBacktrack := time.Now()
-		//folds := sc.BacktrackFolding()
-		//tBacktrack := time.Since(sBacktrack)
-		//log.Printf("Prediction done in %.0f seconds", tBacktrack.Seconds())
-		tBacktrack := time.Duration(-1)
-
-		//sTrivial := time.Now()
-		//trivialSafety := sc.IteratedTrivialSafety(folds)
-		//tTrivial := time.Since(sTrivial)
-		//log.Printf("Trivial safety done")
-		tTrivial := time.Duration(-1)
-
-		//if !reflect.DeepEqual(trivialSafety, complexSafety) {
-		//	log.Printf("Sanity check failed! IteratedTrivialSafety and SafetyFromBacktrack return different values!")
-		//}
-
 		ret <- retitem{
-			seq.Name, len(seq.Bases), sc.Sol[0][len(seq.Bases)-1],
-			tFill.Seconds(), tBacktrack.Seconds(), tTrivial.Seconds(), tComplex.Seconds(),
+			seq.Name, len(seq.Bases), sc.Sol[0][len(seq.Bases)-1], sc.V[0][len(seq.Bases)-1],
+			tFill.Seconds(), tComplex.Seconds(), 0,
+			sc.PairSafety, sc.SingleSafety,
 		}
+	}
+	close(ret)
+}
+
+func singleAnalyze(seqs map[string]*base.Sequence, ret chan retitem) {
+	for _, seq := range seqs {
+		sFill := time.Now()
+		p := &nussinov.Predictor{
+			Seq:        seq,
+			MinHairpin: *minhairpin,
+		}
+		p.FillArray()
+		tFill := time.Since(sFill)
+
+		sBt := time.Now()
+		num, _ := p.Backtrack()
+		tBt := time.Since(sBt)
+
+		ret <- retitem{seq.Name, len(seq.Bases), big.NewInt(0), num,
+			tFill.Seconds(), 0, tBt.Seconds(),
+			nil, nil}
 	}
 	close(ret)
 }
