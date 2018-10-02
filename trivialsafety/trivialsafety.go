@@ -72,7 +72,7 @@ func readHeader(r *bufio.Reader) (string, string) {
 		log.Printf("Failed to read sequence: %v", err)
 		return cmt, ""
 	}
-	if bb[0] != 'A' && bb[0] != 'C' && bb[0] != 'G' && bb[0] != 'U' {
+	if bb[0] != 'A' && bb[0] != 'C' && bb[0] != 'G' && bb[0] != 'U' && bb[0] != 'N' {
 		log.Printf("Line 2 of input doesn't look like sequence, got %q instead", bb)
 	}
 	seq := strings.SplitN(bb, " ", 2)[0]

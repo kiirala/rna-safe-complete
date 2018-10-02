@@ -32,7 +32,7 @@ func main() {
 	}
 
 	seqs := readFasta(*infile)
-	log.Printf("Read %d sequences from %s", len(seqs), *infile)
+	//log.Printf("Read %d sequences from %s", len(seqs), *infile)
 	if *name != "" {
 		seq, ok := seqs[*name]
 		if !ok {
@@ -41,7 +41,7 @@ func main() {
 		seqs = make(map[string]*base.Sequence)
 		seqs[seq.Name] = seq
 	}
-	log.Printf("Analyzing %d sequences", len(seqs))
+	//log.Printf("Analyzing %d sequences", len(seqs))
 
 	vals := make(chan retitem, 1)
 	if *single {
@@ -62,7 +62,7 @@ func main() {
 		fmt.Print("# Name          NumBases NumFolds NumPairs TimeFill TimeCplx\n")
 		for r := range vals {
 			fmt.Printf("%-15s %8d %8s %8d %8.2f %8.2f\n",
-				r.Name, r.Bases, approxint(r.Numfolds), r.NumPairs, r.Tfill, r.Tcomplex)
+				r.Name, r.Bases, approxint(r.NumFolds), r.NumPairs, r.Tfill, r.Tcomplex)
 		}
 	}
 }
@@ -70,7 +70,7 @@ func main() {
 type retitem struct {
 	Name       string
 	Bases      int
-	Numfolds   *big.Int
+	NumFolds   *big.Int
 	NumPairs   int
 	Tfill      float64
 	Tcomplex   float64
