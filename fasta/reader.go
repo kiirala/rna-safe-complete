@@ -80,7 +80,7 @@ func readSingleSequence(br *bufio.Reader) (*base.Sequence, error) {
 		if len(read) == 0 {
 			break
 		}
-		if read[0] == '.' || read[0] == '(' {
+		if read[0] == '.' || read[0] == '(' || read[0] == '[' {
 			break
 		}
 		if read[0] != ';' && read[0] != '>' {
@@ -98,7 +98,7 @@ func readSingleSequence(br *bufio.Reader) (*base.Sequence, error) {
 		}
 	}
 
-	if len(read) > 0 && (read[0] == '.' || read[0] == '(') {
+	if len(read) > 0 && (read[0] == '.' || read[0] == '(' || read[0] == '[') {
 		var dotbracket string
 		for {
 			if len(read) == 0 {
