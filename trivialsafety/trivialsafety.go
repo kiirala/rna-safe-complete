@@ -24,7 +24,6 @@ func main() {
 
 	folds := make(chan folding.FoldingPairs, 1)
 	go getFoldings(r, folds)
-	os.Stdin.Close()
 
 	numFolds := 0
 	pairs := make([][]int, len(seq))
@@ -46,6 +45,8 @@ func main() {
 			}
 		}
 	}
+
+	os.Stdin.Close()
 
 	j, err := json.Marshal(
 		struct {
