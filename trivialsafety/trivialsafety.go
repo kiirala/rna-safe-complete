@@ -3,6 +3,7 @@ package main
 import "bufio"
 import "io"
 import "encoding/json"
+import "flag"
 import "log"
 import "os"
 import "strings"
@@ -10,13 +11,20 @@ import "strings"
 import "keltainen.duckdns.org/rnafolding/fasta"
 import "keltainen.duckdns.org/rnafolding/folding"
 
+var (
+	maxnum = flag.Int("num", 0, "Stop reading more input if this many foldings have been read. Zero disables.")
+)
+
 func main() {
+	flag.Parse()
+
 	r := bufio.NewReader(os.Stdin)
 
 	name, seq := readHeader(r)
 
 	folds := make(chan folding.FoldingPairs, 1)
 	go getFoldings(r, folds)
+	os.Stdin.Close()
 
 	numFolds := 0
 	pairs := make([][]int, len(seq))
@@ -83,6 +91,7 @@ func readHeader(r *bufio.Reader) (string, string) {
 func getFoldings(r *bufio.Reader, ret chan folding.FoldingPairs) {
 	defer close(ret)
 
+	num := 0
 	for {
 		fs, err := r.ReadString('\n')
 		if err != nil && err != io.EOF {
@@ -94,6 +103,10 @@ func getFoldings(r *bufio.Reader, ret chan folding.FoldingPairs) {
 			ret <- fold
 		}
 
+		num++
+		if *maxnum > 0 && num >= *maxnum {
+			return
+		}
 		if err == io.EOF {
 			return
 		}
