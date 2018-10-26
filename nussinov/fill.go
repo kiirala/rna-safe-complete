@@ -1,4 +1,4 @@
-package nussinov
+package nussinov /* import "keltainen.duckdns.org/rnafolding/nussinov" */
 
 func (p *Predictor) FillArray() {
 	numBases := len(p.Seq.Bases)

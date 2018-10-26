@@ -1,4 +1,4 @@
-package trnadb
+package trnadb /* import "keltainen.duckdns.org/rnafolding/trnadb" */
 
 import "testing"
 

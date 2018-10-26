@@ -1,4 +1,4 @@
-package format
+package format /* import "keltainen.duckdns.org/rnafolding/format" */
 
 import "fmt"
 import "strings"

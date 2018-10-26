@@ -1,4 +1,4 @@
-package main
+package main /* import "keltainen.duckdns.org/rnafolding" */
 
 import "fmt"
 import "math/big"

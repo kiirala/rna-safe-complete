@@ -1,4 +1,4 @@
-package folding
+package folding /* import "keltainen.duckdns.org/rnafolding/folding" */
 
 import "log"
 import "sort"

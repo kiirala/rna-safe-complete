@@ -1,4 +1,4 @@
-package types
+package types /* import "keltainen.duckdns.org/rnafolding/types" */
 
 import "testing"
 import "reflect"

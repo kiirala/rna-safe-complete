@@ -1,4 +1,4 @@
-package fasta
+package fasta /* import "keltainen.duckdns.org/rnafolding/fasta" */
 
 import "testing"
 import "strings"

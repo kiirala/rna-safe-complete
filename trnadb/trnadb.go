@@ -3,7 +3,7 @@
 // For details of the database, see:
 // Sprinzl, Steegborn, Hübel, Steinberg - Compilation of tRNA sequences and sequences of tRNA genes
 // Nucleic Acids Research, 1996, vol. 24, no. 1, pp. 68 -- 72
-package trnadb
+package trnadb /* import "keltainen.duckdns.org/rnafolding/trnadb" */
 
 import "bufio"
 import "io"

@@ -1,4 +1,4 @@
-package safecomplete
+package safecomplete /* import "keltainen.duckdns.org/rnafolding/safecomplete" */
 
 func (p *Predictor) FillArray() {
 	numBases := len(p.Seq.Bases)

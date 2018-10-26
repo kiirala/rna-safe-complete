@@ -1,4 +1,4 @@
-package wuchty
+package wuchty /* import "keltainen.duckdns.org/rnafolding/wuchty" */
 
 import "testing"
 import "reflect"

@@ -1,4 +1,4 @@
-package base
+package base /* import "keltainen.duckdns.org/rnafolding/base" */
 
 import "strings"
 

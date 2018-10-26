@@ -1,4 +1,4 @@
-package safecomplete
+package safecomplete /* import "keltainen.duckdns.org/rnafolding/safecomplete" */
 
 import "math/big"
 

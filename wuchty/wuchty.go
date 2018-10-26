@@ -2,7 +2,7 @@
 // Source:
 // Wuchty, Fontana, Hofacker, Schuster - Complete suboptimal folding of RNA and the stability of secondary structures
 // Biopolymers, 1999, vol. 49, no. 2, pages 145–165.
-package wuchty
+package wuchty /* import "keltainen.duckdns.org/rnafolding/wuchty" */
 
 import "log"
 import "fmt"

@@ -1,4 +1,4 @@
-package main
+package main /* import "keltainen.duckdns.org/rnafolding/fastadump" */
 
 import "encoding/json"
 import "flag"

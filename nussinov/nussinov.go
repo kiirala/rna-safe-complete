@@ -1,4 +1,4 @@
-package nussinov
+package nussinov /* import "keltainen.duckdns.org/rnafolding/nussinov" */
 
 import "keltainen.duckdns.org/rnafolding/base"
 
