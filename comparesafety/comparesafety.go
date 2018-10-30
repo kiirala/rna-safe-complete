@@ -12,6 +12,7 @@ import "time"
 
 import "keltainen.duckdns.org/rnafolding/base"
 import "keltainen.duckdns.org/rnafolding/fasta"
+import "keltainen.duckdns.org/rnafolding/folding"
 import "keltainen.duckdns.org/rnafolding/nussinov"
 import "keltainen.duckdns.org/rnafolding/safecomplete"
 
@@ -77,6 +78,7 @@ type retitem struct {
 	Tbacktrack float64
 	Pairs      [][]*big.Int
 	Free       []*big.Int
+	Sample     folding.FoldingPairs
 }
 
 func analyze(seqs map[string]*base.Sequence, ret chan retitem) {
@@ -102,7 +104,7 @@ func analyze(seqs map[string]*base.Sequence, ret chan retitem) {
 		ret <- retitem{
 			seq.Name, len(seq.Bases), sc.Sol[0][len(seq.Bases)-1], sc.V[0][len(seq.Bases)-1],
 			tFill.Seconds(), tComplex.Seconds(), 0,
-			sc.PairSafety, sc.SingleSafety,
+			sc.PairSafety, sc.SingleSafety, nil,
 		}
 	}
 	close(ret)
@@ -119,12 +121,12 @@ func singleAnalyze(seqs map[string]*base.Sequence, ret chan retitem) {
 		tFill := time.Since(sFill)
 
 		sBt := time.Now()
-		num, _ := p.Backtrack()
+		num, fold := p.Backtrack()
 		tBt := time.Since(sBt)
 
 		ret <- retitem{seq.Name, len(seq.Bases), big.NewInt(0), num,
 			tFill.Seconds(), 0, tBt.Seconds(),
-			nil, nil}
+			nil, nil, fold}
 	}
 	close(ret)
 }
